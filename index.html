@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TicketFlow TH — ระบบจองตั๋วคอนเสิร์ตอัจฉริยะ | Digital Chem Eng</title>
+  <title>TicketFlow × StagePass Shield — ระบบจองตั๋วคอนเสิร์ตอัจฉริยะ | Digital Chem Eng</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
@@ -13,87 +13,214 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="logo">🎫</span>
+      <div class="logo-badge">🎫</div>
       <div>
-        <h1>TicketFlow TH</h1>
-        <p>ระบบจองตั๋วคอนเสิร์ตจำลอง · Database + Supervised + Unsupervised Learning</p>
+        <h1>TicketFlow TH × StagePass Shield</h1>
+        <p>ระบบจองตั๋วคอนเสิร์ตอัจฉริยะ · Database + Supervised + Unsupervised Anomaly Detection</p>
       </div>
     </div>
-    <div class="status" id="status">กำลังโหลด…</div>
+    <div class="top-actions">
+      <div class="status" id="status">กำลังโหลด…</div>
+      <button id="btn-theme" class="btn ghost small" title="สลับโหมดสี สว่าง / มืด">🌙 โหมดมืด</button>
+    </div>
   </header>
 
-  <nav class="tabs" id="tabs">
-    <button data-tab="overview" class="active">0 · ภาพรวม</button>
-    <button data-tab="database">1 · Database</button>
-    <button data-tab="supervised">2 · Supervised (คน vs บอทที่มี Label)</button>
-    <button data-tab="unsupervised">3 · Unsupervised (Anomaly หาบอทไร้ Label + Clustering)</button>
-    <button data-tab="simulation">4 · จำลองวันเปิดขาย</button>
-  </nav>
+  <div class="tabs-wrap">
+    <nav class="tabs" id="tabs">
+      <button data-tab="overview" class="active">0 · ภาพรวมระบบ</button>
+      <button data-tab="lab">⚡ 1 · จองบัตรสด &amp; ทดลองบอท (StagePass Lab)</button>
+      <button data-tab="database">🗄️ 2 · Database &amp; SQL</button>
+      <button data-tab="supervised">🤖 3 · Supervised (คน vs บอทที่มี Label)</button>
+      <button data-tab="unsupervised">🔎 4 · Unsupervised (Anomaly บอทไร้ Label + PCA)</button>
+      <button data-tab="simulation">🎤 5 · จำลองวันเปิดขายจริง</button>
+    </nav>
+  </div>
 
   <main>
     <!-- ================= 0. OVERVIEW ================= -->
     <section id="tab-overview" class="tab active">
       <div class="grid2">
-        <div class="card">
-          <h2>โจทย์</h2>
-          <p>ตั๋วคอนเสิร์ตขายหมดในไม่กี่นาที เพราะ <b>บอทกว้านซื้อ</b> และ <b>ระบบจองที่นั่งซ้ำ</b> โปรเจกต์นี้มองระบบจองตั๋วเป็น "กระบวนการ" แล้วใช้เครื่องมือจากวิชามาแก้ปัญหาแต่ละจุด</p>
+        <div class="card hero-card">
+          <div class="row between wrap gap" style="margin-bottom:8px">
+            <h2>🎯 โจทย์และการต่อยอดโปรเจกต์ปลายภาค</h2>
+            <button class="btn small" id="btn-goto-lab">⚡ ทดลองจองบัตรสด &amp; ยิงบอททันที →</button>
+          </div>
+          <p>ตั๋วคอนเสิร์ตขายหมดในไม่กี่นาทีเพราะ <b>บอทกว้านซื้อ (Scalper Bots)</b> และ <b>ปัญหาจองที่นั่งซ้ำ (Race Condition)</b> โปรเจกต์นี้จำลองระบบจองตั๋วครบวงจรโดยผสานเนื้อหาครึ่งแรกและครึ่งหลังของวิชาเข้าด้วยกัน:</p>
           <table class="tbl">
             <thead><tr><th>ส่วนของระบบ</th><th>หัวข้อวิชา</th><th>ครึ่ง</th></tr></thead>
             <tbody>
-              <tr><td>ตรวจเลขบัตร, ล็อกที่นั่ง (Transaction), จำกัดสิทธิ์ต่อบัตร</td><td>Database Management</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
-              <tr><td>คัดกรองบอทที่รู้จักจาก Label (Classification + Tree)</td><td>Supervised Learning</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
-              <tr><td><b>ตรวจจับบอทสายพันธุ์ใหม่ / ไร้ Label (Anomaly + PCA Biplot)</b></td><td><b>Unsupervised Learning</b></td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
-              <tr><td>จัดกลุ่มพฤติกรรม &amp; กลุ่มลูกค้า (K-Means, DBSCAN, PCA)</td><td>Unsupervised Learning</td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
+              <tr><td>ตรวจเลขบัตรประชาชน 13 หลัก, ล็อกที่นั่ง (Atomic Transaction), จำกัดสิทธิ์ 4 ใบ/บัตร</td><td>Database Management</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
+              <tr><td>คัดกรองบอทที่เคยรู้จักจาก Label (Random Forest, Decision Tree, Logistic Regression)</td><td>Supervised Learning</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
+              <tr><td><b>ตรวจจับบอทสายพันธุ์ใหม่ / ไร้ Label (Isolation Forest, LOF, DBSCAN, K-Means + PCA Biplot)</b></td><td><b>Unsupervised Learning</b></td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
+              <tr><td>จัดกลุ่มพฤติกรรม &amp; แบ่งกลุ่มลูกค้า (K-Means Clustering + PCA 2D)</td><td>Unsupervised Learning</td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
             </tbody>
           </table>
         </div>
         <div class="card">
-          <h2>สถิติชุดข้อมูลจำลอง</h2>
+          <h2>📊 สถิติชุดข้อมูลจำลอง &amp; การตั้งค่า</h2>
           <div class="kpis" id="overview-kpis"></div>
-          <div class="row gap">
+          <div class="row gap wrap" style="margin-top:12px">
             <label>จำนวนบัญชี <input type="number" id="cfg-n" value="800" min="200" max="3000" step="100" /></label>
             <label>สัดส่วนบอท <input type="number" id="cfg-bot" value="0.2" min="0.05" max="0.6" step="0.05" /></label>
             <label>seed <input type="number" id="cfg-seed" value="42" /></label>
-            <button id="btn-regen" class="btn">สร้างข้อมูลใหม่</button>
+            <button id="btn-regen" class="btn">🔄 สร้างข้อมูลใหม่</button>
           </div>
-          <p class="muted small">ข้อมูลทั้งหมดเป็นข้อมูลจำลอง เลขบัตรประชาชนสร้างตามสูตร checksum เท่านั้น ไม่ใช่ข้อมูลจริง</p>
+          <p class="muted small" style="margin-top:10px">ข้อมูลทั้งหมดเป็นข้อมูลจำลอง เลขบัตรประชาชนสร้างตามสูตร Checksum 13 หลักเท่านั้น ไม่ใช่ข้อมูลส่วนบุคคลจริง</p>
         </div>
       </div>
 
       <div class="card">
-        <h2>สถาปัตยกรรม / Pipeline</h2>
+        <h2>🛡️ สถาปัตยกรรมป้องกันบอท 3 ชั้น (Hybrid Multi-Layer Pipeline)</h2>
         <div class="flow">
-          <div class="node">👥 ผู้ใช้เข้ามา<br><small>(Feed)</small></div><div class="arrow">→</div>
+          <div class="node">👥 ผู้ใช้ / บอทเข้าจอง<br><small>Real-Time Telemetry</small></div><div class="arrow">→</div>
+          <div class="node">🛡️ ด่าน 0: StagePass 11-Layer<br><small>isTrusted · Honeypot · Mouse</small></div><div class="arrow">→</div>
           <div class="node sup">🤖 ด่าน 1: บอทที่เคยรู้จัก<br><small>Supervised (มี Label)</small></div><div class="arrow">→</div>
           <div class="node uns">🔎 ด่าน 2: บอทไร้ Label / Zero-Day<br><small>Unsupervised Anomaly + PCA</small></div><div class="arrow">→</div>
-          <div class="node db">🪪 ตรวจเลขบัตร + ล็อกที่นั่ง<br><small>Database Transaction</small></div><div class="arrow">→</div>
-          <div class="node">✅ ตั๋วที่ขาย<br><small>(Product)</small></div>
-        </div>
-        <div class="flow">
-          <div class="node db">🗄️ Orders / Data historian</div><div class="arrow">→</div>
-          <div class="node uns">🧩 K-Means + PCA แบ่งกลุ่มลูกค้า<br><small>Unsupervised Clustering</small></div><div class="arrow">→</div>
-          <div class="node">📈 กันโควตาโซน / กลยุทธ์ราคา</div>
+          <div class="node db">🪪 ด่าน 3: ตรวจบัตร + ล็อกที่นั่ง<br><small>SQLite Transaction &amp; Trigger</small></div><div class="arrow">→</div>
+          <div class="node">✅ ออกตั๋วสำเร็จ<br><small>พร้อมจัดกลุ่ม K-Means</small></div>
         </div>
       </div>
     </section>
 
-    <!-- ================= 1. DATABASE ================= -->
+    <!-- ================= 1. STAGEPASS LIVE LAB ================= -->
+    <section id="tab-lab" class="tab">
+      <div class="card hero-card">
+        <div class="row between wrap gap">
+          <div>
+            <h2>⚡ StagePass Shield — ระบบจองบัตรคอนเสิร์ตสด &amp; ห้องทดลองจำลองบอทโจมตี</h2>
+            <p class="small" style="margin:0">ลองขยับเมาส์ คลิกเลือกที่นั่ง และกรอกฟอร์มด้วยตัวเองเพื่อดูค่า <b>Real-Time Telemetry</b> ของคุณ หรือกดปุ่ม <b>จำลองบอทโจมตี 6 รูปแบบ</b> เพื่อดูการทำงานของเกราะป้องกัน 11 ชั้น + โมเดล Supervised + Unsupervised Anomaly Detection + SQLite Transaction แบบสดๆ</p>
+          </div>
+          <div class="row gap wrap">
+            <label>รอบการแสดง
+              <select id="lab-showtime">
+                <option value="SAT">เสาร์ 15 พ.ย. 19:00 · IMPACT Arena</option>
+                <option value="SUN">อาทิตย์ 16 พ.ย. 18:00 · IMPACT Arena</option>
+              </select>
+            </label>
+            <button id="btn-lab-reset" class="btn ghost small">🔄 รีเซ็ตการวัดผล</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-arena">
+        <!-- คอลัมน์ซ้าย: ผังที่นั่ง + ฟอร์มจองบัตร + ค่า Telemetry สด -->
+        <div>
+          <div class="card">
+            <div class="row between wrap gap" style="margin-bottom:8px">
+              <h3>💺 เลือกที่นั่งในฮอลล์ (คลิกเลือกได้สูงสุด 4 ที่นั่ง)</h3>
+              <span class="pill p1" id="lab-selected-badge">ยังไม่ได้เลือกที่นั่ง</span>
+            </div>
+            <div class="legend">
+              <span><i class="seat AVAILABLE" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></i> โซน VIP (6,500฿)</span>
+              <span><i class="seat AVAILABLE"></i> โซน A/B/C ว่าง</span>
+              <span><i class="seat SELECTED"></i> ที่นั่งที่คุณเลือก</span>
+              <span><i class="seat SOLD human"></i> ขายให้คนแล้ว</span>
+              <span><i class="seat SOLD bot"></i> ถูกบอทกว้านซื้อ</span>
+            </div>
+            <div id="lab-seatmap" class="seatmap"></div>
+            <!-- ที่นั่งล่อบอท (Honeypot Seat) ซ่อนจากสายตาคน แต่บอทที่กวาด DOM จะคลิกโดน -->
+            <button id="lab-honeypot-seat" class="seat HONEYPOT" data-seat="Z99" aria-hidden="true" tabindex="-1">Z99</button>
+          </div>
+
+          <div class="card">
+            <h3>📝 ข้อมูลผู้จองบัตร &amp; ตรวจสอบสิทธิ์ในฐานข้อมูล</h3>
+            <div class="grid2" style="margin-bottom:10px">
+              <label style="display:flex;flex-direction:column;align-items:stretch">ชื่อ-นามสกุลผู้จอง
+                <input id="lab-name" placeholder="เช่น สมชาย ใจดี" value="ผู้ชม ทดสอบระบบ" />
+              </label>
+              <label style="display:flex;flex-direction:column;align-items:stretch">เบอร์โทรศัพท์
+                <input id="lab-phone" class="mono" placeholder="08X-XXX-XXXX" value="081-234-5678" />
+              </label>
+            </div>
+            <div class="row gap wrap" style="margin-bottom:10px">
+              <label style="flex:1">เลขบัตรประชาชน 13 หลัก (Checksum)
+                <input id="lab-thai-id" class="mono" style="flex:1;min-width:165px" maxlength="13" value="1234567890121" />
+              </label>
+              <button id="btn-lab-id" class="btn ghost small" type="button">🎲 สุ่มเลขบัตรที่ถูกต้อง</button>
+              <label>บัญชีจาก IP เดียวกัน
+                <input type="number" id="lab-ip-accounts" value="1" min="1" max="50" style="width:68px" />
+              </label>
+            </div>
+            <!-- ช่อง Honeypot ซ่อนไว้ดักบอท Auto-fill -->
+            <div style="position:absolute;left:-9999px;opacity:0;pointer-events:none" aria-hidden="true">
+              <label>Company Website (ห้ามกรอก) <input id="lab-honeypot" name="company_website" tabindex="-1" autocomplete="off" /></label>
+            </div>
+            <div class="row gap wrap">
+              <button id="btn-lab-book" class="btn" style="flex:1;padding:11px 18px;font-size:0.98rem">🎫 ยืนยันการจองบัตร (ตรวจผ่านเกราะป้องกัน 3 ด่าน)</button>
+            </div>
+            <div id="lab-db-msg" class="msg"></div>
+          </div>
+
+          <div class="card">
+            <div class="row between wrap">
+              <h3>📡 Real-Time Browser Telemetry (วัดพฤติกรรมสดจากหน้าจอ)</h3>
+              <span class="pill p2" id="lab-telemetry-mode">โหมด: วัดจากการขยับเมาส์/คีย์บอร์ดจริงของคุณ</span>
+            </div>
+            <div class="kpis small" id="lab-telemetry-kpis"></div>
+          </div>
+        </div>
+
+        <!-- คอลัมน์ขวา: ห้องทดลองปล่อยบอท 6 รูปแบบ + ผลการตัดสิน 3 ด่าน & 11-Layer Shield -->
+        <div>
+          <div class="card">
+            <h3>🤖 ห้องทดลองจำลองบอทโจมตี (คลิกเพื่อปล่อยบอทลงสนาม)</h3>
+            <p class="muted small" style="margin-bottom:8px">เมื่อกดปุ่ม ตัวชี้เมาส์จำลองของบอทจะวิ่งไปเลือกที่นั่ง กรอกข้อมูล และส่งคำสั่งซื้อเข้าสู่ระบบป้องกันทันที</p>
+            <div class="bot-grid" id="lab-bot-grid">
+              <button class="bot-card" data-bot="human" type="button">
+                <div class="b-title"><span>🙂 คนทั่วไปจองบัตร</span><span class="pill p-ok">Human</span></div>
+                <div class="b-desc">ขยับเมาส์เป็นธรรมชาติ (Entropy สูง) คลิกความเร็วปกติ เลขบัตรถูกต้อง ผ่านฉลุยทุกด่าน</div>
+              </button>
+              <button class="bot-card" data-bot="selenium" type="button">
+                <div class="b-title"><span>🤖 Bot #1: Selenium / Script</span><span class="pill p-bad">Layer 1-3</span></div>
+                <div class="b-desc">สั่งคลิกผ่านสคริปต์ (<code>isTrusted=false</code>, <code>webdriver=true</code>) เมาส์วาร์ปไร้ความโค้ง</div>
+              </button>
+              <button class="bot-card" data-bot="burst" type="button">
+                <div class="b-title"><span>⚡ Bot #2: กดรัวแย่งโซน VIP</span><span class="pill p-bad">Supervised</span></div>
+                <div class="b-desc">ระดมคลิก 360 ครั้ง/นาที (28 req/s) กวาดที่นั่ง VIP รวดเดียว โดนทั้ง Rate Limit และ Random Forest</div>
+              </button>
+              <button class="bot-card" data-bot="honeypot" type="button">
+                <div class="b-title"><span>🍯 Bot #3: Auto-fill ติดกับดัก</span><span class="pill p-bad">Honeypot</span></div>
+                <div class="b-desc">สคริปต์กรอกทุกช่องใน DOM ภายใน 0.3 วินาที เผลอกรอกช่องลับ Honeypot และคลิกที่นั่งล่อ Z99</div>
+              </button>
+              <button class="bot-card" data-bot="stealth" type="button">
+                <div class="b-title"><span>🥷 Bot #4: บอทแนบเนียน (Stealth)</span><span class="pill p-warn">ML Detect</span></div>
+                <div class="b-desc">หน่วงเวลาคลิกให้ช้าลงเพื่อหลบกฎ <code>req/s &gt; 10</code> แต่จังหวะคงที่ผิดมนุษย์ โมเดล ML จับได้</div>
+              </button>
+              <button class="bot-card" data-bot="zeroday" type="button">
+                <div class="b-title"><span>🕵️ Bot #5: Zero-Day ไร้ Label!</span><span class="pill p2">Unsupervised</span></div>
+                <div class="b-desc"><b>ไฮไลต์ครึ่งหลัง:</b> คลิกช้าเหมือนคนจน <b>Supervised หลุด</b> แต่มาจาก 14 บัญชี/IP + เมาส์เส้นตรง → <b>Anomaly จับได้!</b></div>
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>🔍 ผลการวิเคราะห์จากระบบป้องกัน 3 ด่าน</h3>
+            <div id="lab-verdict" class="msg big">กรุณาเลือกที่นั่งหรือกดปุ่มจำลองบอทด้านบนเพื่อดูผลวิเคราะห์</div>
+            <div class="kpis small" id="lab-layer-summary"></div>
+            <h3 style="margin-top:14px">🛡️ รายละเอียดเกราะป้องกัน StagePass 11-Layer &amp; ML Shield</h3>
+            <div class="shield-list" id="lab-shield-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. DATABASE ================= -->
     <section id="tab-database" class="tab">
       <div class="grid2">
         <div class="card">
-          <h2>🪪 ตรวจเลขบัตรประชาชน (checksum)</h2>
-          <div class="row gap">
+          <h2>🪪 ตรวจเลขบัตรประชาชน 13 หลัก (Modulo-11 Checksum)</h2>
+          <div class="row gap wrap">
             <input id="id-input" class="mono" placeholder="เลข 13 หลัก" maxlength="17" value="1234567890121" />
-            <button id="btn-id-check" class="btn">ตรวจ</button>
-            <button id="btn-id-random" class="btn ghost">สุ่มเลขที่ถูกต้อง</button>
+            <button id="btn-id-check" class="btn">ตรวจสอบ</button>
+            <button id="btn-id-random" class="btn ghost">🎲 สุ่มเลขที่ถูกต้อง</button>
           </div>
           <pre id="id-result" class="console small"></pre>
         </div>
         <div class="card">
-          <h2>⚔️ สาธิต Race condition: 2 คนกดที่นั่งเดียวกัน</h2>
-          <div class="row gap">
-            <button id="btn-race-naive" class="btn danger">แบบไม่ป้องกัน (SELECT แล้ว UPDATE)</button>
-            <button id="btn-race-safe" class="btn">แบบ Atomic Transaction</button>
+          <h2>⚔️ สาธิต Race Condition: 2 คนกดจองที่นั่งเดียวกันพร้อมกัน</h2>
+          <div class="row gap wrap">
+            <button id="btn-race-naive" class="btn danger">❌ แบบไม่ป้องกัน (SELECT แล้ว UPDATE)</button>
+            <button id="btn-race-safe" class="btn">✅ แบบ Atomic Transaction</button>
           </div>
           <pre id="race-log" class="console small"></pre>
         </div>
@@ -101,39 +228,40 @@
 
       <div class="grid2">
         <div class="card">
-          <h2>💺 ทดลองจองที่นั่ง (ผ่าน transaction + trigger จำกัด <span id="max-ticket"></span> ใบ/บัตร)</h2>
-          <div class="row gap">
+          <h2>💺 ทดลองจองที่นั่ง (ผ่าน Transaction + Trigger จำกัด <span id="max-ticket"></span> ใบ/บัตร)</h2>
+          <div class="row gap wrap">
             <label>user_id <input type="number" id="book-user" value="1" min="1" /></label>
-            <span class="muted small">คลิกที่นั่งว่างในผังเพื่อจอง</span>
-            <button id="btn-reset-sales" class="btn ghost">ล้างการขายทั้งหมด</button>
+            <span class="muted small">คลิกที่นั่งว่างในผังเพื่อจองลง SQLite</span>
+            <button id="btn-reset-sales" class="btn ghost small">ล้างการขายทั้งหมด</button>
           </div>
           <div id="book-msg" class="msg"></div>
           <div class="legend">
-            <span><i class="seat AVAILABLE"></i> ว่าง</span>
+            <span><i class="seat AVAILABLE" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></i> VIP ว่าง</span>
+            <span><i class="seat AVAILABLE"></i> ที่นั่งว่าง</span>
             <span><i class="seat SOLD human"></i> ขายให้คน</span>
             <span><i class="seat SOLD bot"></i> ขายให้บอท</span>
           </div>
           <div id="seatmap" class="seatmap"></div>
         </div>
         <div class="card">
-          <h2>🧾 SQL Console</h2>
+          <h2>🧾 SQL Console (คิวรีฐานข้อมูล SQLite สดในเบราว์เซอร์)</h2>
           <div class="row gap wrap" id="sql-presets"></div>
           <textarea id="sql-input" class="mono" rows="6"></textarea>
-          <div class="row gap">
+          <div class="row gap wrap">
             <button id="btn-sql-run" class="btn">Run ▶</button>
             <button id="btn-sql-schema" class="btn ghost">ดู Schema</button>
-            <button id="btn-sql-download" class="btn ghost">ดาวน์โหลด .sqlite</button>
+            <button id="btn-sql-download" class="btn ghost">💾 ดาวน์โหลด .sqlite</button>
           </div>
           <div id="sql-output" class="sql-output"></div>
         </div>
       </div>
     </section>
 
-    <!-- ================= 2. SUPERVISED ================= -->
+    <!-- ================= 3. SUPERVISED ================= -->
     <section id="tab-supervised" class="tab">
       <div class="card">
         <div class="row gap wrap">
-          <label>โมเดล
+          <label>โมเดล Supervised
             <select id="sup-model">
               <option value="rf">Random Forest</option>
               <option value="dt">Decision Tree</option>
@@ -144,42 +272,42 @@
           <label>Threshold <input type="range" id="sup-thr" min="0.05" max="0.95" step="0.01" value="0.5" /> <b id="sup-thr-val">0.50</b></label>
           <label>ต้นทุน: ปฏิเสธคนจริง (FP) <input type="number" id="cost-fp" value="5" min="0" style="width:64px" /></label>
           <label>ต้นทุน: บอทหลุด (FN) <input type="number" id="cost-fn" value="3" min="0" style="width:64px" /></label>
-          <button id="btn-best-thr" class="btn ghost">หา threshold ต้นทุนต่ำสุด</button>
+          <button id="btn-best-thr" class="btn ghost small">🎯 หา Threshold ต้นทุนต่ำสุด</button>
         </div>
-        <p class="muted small">Train/Test split 70/30 แบบ stratified · ฟีเจอร์: พฤติกรรมการใช้งานระหว่างจอง 7 ตัว · โมเดลทั้งหมดเขียนด้วย JavaScript เอง (ไม่ใช้ไลบรารี ML)</p>
+        <p class="muted small" style="margin-top:8px;margin-bottom:0">Train/Test split 70/30 แบบ Stratified · ฟีเจอร์พฤติกรรมระหว่างจอง 7 ตัว · <b>ข้อจำกัดสำคัญ:</b> โมเดลฝึกได้เฉพาะบอทที่เคยมี Label แล้ว จึงจับบอท Zero-Day ที่ปลอมความเร็วคลิกไม่ได้ (ดูต่อในแท็บ 4)</p>
       </div>
 
       <div class="grid3">
-        <div class="card"><h3>Confusion Matrix (test set)</h3><div id="cm"></div><div class="kpis small" id="sup-metrics"></div></div>
+        <div class="card"><h3>Confusion Matrix (Test Set)</h3><div id="cm"></div><div class="kpis small" id="sup-metrics"></div></div>
         <div class="card"><h3>ROC Curve</h3><canvas id="chart-roc" height="220"></canvas></div>
         <div class="card"><h3>Feature Importance</h3><canvas id="chart-imp" height="220"></canvas></div>
       </div>
 
       <div class="grid2">
         <div class="card">
-          <h3>เปรียบเทียบโมเดล (threshold 0.5)</h3>
-          <table class="tbl" id="sup-compare"></table>
-          <h3>ต้นทุนรวม vs Threshold</h3>
+          <h3>เปรียบเทียบโมเดล (Threshold 0.5)</h3>
+          <div class="scroll"><table class="tbl" id="sup-compare"></table></div>
+          <h3 style="margin-top:14px">ต้นทุนรวม vs Threshold</h3>
           <canvas id="chart-cost" height="160"></canvas>
         </div>
         <div class="card">
-          <h3>🧪 ทดสอบบัญชีเดียว</h3>
+          <h3>🧪 ทดสอบพยากรณ์รายบัญชี (Supervised vs Unsupervised)</h3>
           <div id="try-form" class="try-form"></div>
           <div id="try-result" class="msg big"></div>
           <details>
-            <summary>ดูกฎของ Decision Tree (อ่านได้ / อธิบายได้)</summary>
+            <summary>ดูกฎของ Decision Tree (อ่านเข้าใจง่าย / อธิบายได้)</summary>
             <pre id="tree-text" class="console small"></pre>
           </details>
         </div>
       </div>
     </section>
 
-    <!-- ================= 3. UNSUPERVISED ================= -->
+    <!-- ================= 4. UNSUPERVISED ================= -->
     <section id="tab-unsupervised" class="tab">
-      <div class="card">
-        <h2>🔎 ส่วนที่ 3A · Unsupervised Anomaly Detection: ตรวจจับบอทที่ไม่มี Label (ต่อยอดครึ่งหลัง)</h2>
+      <div class="card hero-card">
+        <h2>🔎 ส่วนที่ 4A · Unsupervised Anomaly Detection: ตรวจจับบอทไร้ Label (ต่อยอดครึ่งหลัง)</h2>
         <p class="small">
-          <b>ทำไมต้องใช้ Unsupervised Anomaly Detection?</b> โมเดล Supervised ในแท็บ 2 เรียนรู้จากบอทที่เคยติด Label ไว้แล้ว (เช่น บอทกดรัว) แต่ในงานจริงจะมี <b>บอทสายพันธุ์ใหม่ (Zero-Day / Distributed Bot)</b> ที่ยังไม่มี Label ในชุดฝึก (ตั้งใจกดช้าเหมือนคน แต่ใช้ IP ซ้ำจำนวนมาก + เมาส์ลากเส้นตรงผิดธรรมชาติ) จึงต้องใช้ <b>PCA (ลดมิติ) + Clustering / Anomaly Detection</b> ค้นหาจุดที่เบี่ยงเบนจากกลุ่มคนส่วนใหญ่โดยไม่ต้องพึ่งพา Label
+          <b>ทำไมต้องใช้ Unsupervised Anomaly Detection?</b> โมเดล Supervised ในแท็บ 3 เรียนรู้จากบอทที่เคยติด Label ไว้แล้ว (เช่น บอทกดรัว) แต่ในงานจริงจะมี <b>บอทสายพันธุ์ใหม่ (Zero-Day / Distributed Bot)</b> ที่ยังไม่มี Label ในชุดฝึก (ตั้งใจคลิกช้าเหมือนคน แต่ใช้ IP ซ้ำจำนวนมาก + เมาส์ลากเส้นตรงผิดธรรมชาติ) จึงต้องใช้ <b>PCA (ลดมิติ) + Clustering / Anomaly Detection</b> ค้นหาจุดที่เบี่ยงเบนจากกลุ่มคนส่วนใหญ่โดยไม่ต้องพึ่งพา Label
         </p>
         <div class="row gap wrap">
           <label>อัลกอริทึม Anomaly Detection
@@ -218,7 +346,7 @@
         <div class="card">
           <h3>PCA 2D Biplot ของพฤติกรรมบัญชี &amp; จุดที่ถูกติดธง Anomaly</h3>
           <canvas id="chart-beh-pca" height="310"></canvas>
-          <p class="muted small">จุด = บัญชีบนแกน PC1–PC2 · เส้นสีเหลือง = ทิศทางอิทธิพลของฟีเจอร์ (PCA Loadings / Biplot) · วงกลมขอบขาว = บัญชีที่ถูกติดธงว่าเป็น Anomaly</p>
+          <p class="muted small">จุด = บัญชีบนแกน PC1–PC2 · เส้นสีเหลือง = ทิศทางอิทธิพลของฟีเจอร์ (PCA Loadings / Biplot) · วงกลมขอบเด่น = บัญชีที่ถูกติดธงว่าเป็น Anomaly</p>
         </div>
         <div class="card">
           <h3>เปรียบเทียบ 5 วิธี Unsupervised Anomaly vs Supervised</h3>
@@ -230,7 +358,7 @@
       </div>
 
       <div class="card">
-        <h2>🧩 ส่วนที่ 3B · Unsupervised Clustering: แบ่งกลุ่มลูกค้าด้วย K-Means + PCA</h2>
+        <h2>🧩 ส่วนที่ 4B · Unsupervised Clustering: แบ่งกลุ่มลูกค้าด้วย K-Means + PCA</h2>
         <div class="row gap wrap">
           <label>จำนวนกลุ่ม k <input type="range" id="uns-k" min="2" max="8" value="5" /> <b id="uns-k-val">5</b></label>
           <label><input type="checkbox" id="uns-only-human" checked /> ใช้เฉพาะบัญชีที่ผ่านการคัดกรองว่าเป็น "คน"</label>
@@ -239,34 +367,34 @@
       </div>
       <div class="grid3">
         <div class="card"><h3>Elbow (Inertia)</h3><canvas id="chart-elbow" height="200"></canvas></div>
-        <div class="card"><h3>Silhouette score</h3><canvas id="chart-sil" height="200"></canvas></div>
-        <div class="card"><h3>PCA: Explained variance (กลุ่มลูกค้า)</h3><canvas id="chart-pcavar" height="200"></canvas></div>
+        <div class="card"><h3>Silhouette Score</h3><canvas id="chart-sil" height="200"></canvas></div>
+        <div class="card"><h3>PCA: Explained Variance (กลุ่มลูกค้า)</h3><canvas id="chart-pcavar" height="200"></canvas></div>
       </div>
       <div class="grid2">
         <div class="card"><h3>กลุ่มลูกค้าบนแกน PC1–PC2</h3><canvas id="chart-pca" height="280"></canvas></div>
         <div class="card">
           <h3>โปรไฟล์ของแต่ละกลุ่ม (ค่าเฉลี่ย)</h3>
           <div class="scroll"><table class="tbl" id="uns-profile"></table></div>
-          <h3>ข้อเสนอเชิงธุรกิจ</h3>
+          <h3 style="margin-top:12px">ข้อเสนอเชิงธุรกิจ</h3>
           <ul id="uns-reco"></ul>
           <p class="muted small" id="uns-purity"></p>
         </div>
       </div>
       <details class="card">
-        <summary>ดูตารางตรวจสอบกับ persona จริงที่ซ่อนไว้ (Crosstab evaluation)</summary>
+        <summary>ดูตารางตรวจสอบกับ Persona จริงที่ซ่อนไว้ (Crosstab Evaluation)</summary>
         <div class="scroll" style="margin-top:10px"><table class="tbl" id="uns-crosstab"></table></div>
       </details>
     </section>
 
-    <!-- ================= 4. SIMULATION ================= -->
+    <!-- ================= 5. SIMULATION ================= -->
     <section id="tab-simulation" class="tab">
-      <div class="card">
-        <h2>🎤 จำลองวันเปิดขาย: รวม Database + Supervised + Unsupervised Anomaly</h2>
+      <div class="card hero-card">
+        <h2>🎤 จำลองวันเปิดขายจริง: รวม Database + Supervised + Unsupervised Anomaly</h2>
         <p class="small">ทุกบัญชีเข้ามาตามลำดับเวลา (บอทเร็วกว่าคน) → <b>ระบบคัดกรองบอท (เลือกเทียบได้ 4 โหมด)</b> → บัญชีที่ผ่านเลือกโซนตาม <b>กลุ่มลูกค้า (K-Means)</b> → จองผ่าน <b>Transaction ใน SQLite</b> (กันจองซ้ำ + จำกัดสิทธิ์ต่อบัตร)</p>
         <div class="row gap wrap">
           <label>โหมดคัดกรองบอท
             <select id="sim-mode">
-              <option value="hybrid" selected>Hybrid: Supervised + Unsupervised Anomaly (แนะนำ)</option>
+              <option value="hybrid" selected>✨ Hybrid: Supervised + Unsupervised Anomaly (แนะนำ)</option>
               <option value="sup">Supervised อย่างเดียว (จับได้เฉพาะบอทที่มีใน Label)</option>
               <option value="unsup">Unsupervised Anomaly อย่างเดียว (ไม่ใช้ Label)</option>
               <option value="none">ไม่คัดกรองบอทเลย (No Defense)</option>
@@ -274,7 +402,7 @@
           </label>
           <label><input type="checkbox" id="sim-quota" /> กันโควตาโซน C 30% ให้กลุ่ม "นักศึกษา/สายประหยัด"</label>
           <button id="btn-sim-run" class="btn">▶ เริ่มเปิดขาย</button>
-          <button id="btn-sim-compare" class="btn ghost">เปรียบเทียบครบทั้ง 4 โหมด</button>
+          <button id="btn-sim-compare" class="btn ghost">📊 เปรียบเทียบครบทั้ง 4 โหมด</button>
         </div>
       </div>
       <div class="kpis" id="sim-kpis"></div>
@@ -284,12 +412,13 @@
       </div>
       <div class="grid2">
         <div class="card"><h3>ผังที่นั่งหลังเปิดขาย</h3><div id="sim-seatmap" class="seatmap"></div></div>
-        <div class="card"><h3>ผลเปรียบเทียบ</h3><table class="tbl" id="sim-compare"></table><p class="muted small">ผลการจำลองถูกบันทึกลงตาราง <code>orders</code>, <code>predictions</code>, <code>segments</code> — ไปดูต่อได้ที่ SQL Console</p></div>
+        <div class="card"><h3>ตารางเปรียบเทียบผลลัพธ์</h3><div class="scroll"><table class="tbl" id="sim-compare"></table></div><p class="muted small" style="margin-top:8px">ผลการจำลองถูกบันทึกลงตาราง <code>orders</code>, <code>predictions</code>, <code>segments</code> — ไปดูต่อได้ที่แท็บ Database &amp; SQL</p></div>
       </div>
     </section>
   </main>
 
-  <footer>Digital Chemical Engineering · Final Project · ข้อมูลจำลองทั้งหมด</footer>
+  <div id="bot-cursor">🤖</div>
+  <footer>TicketFlow TH × StagePass Shield · Digital Chemical Engineering (2306565) Final Project · ข้อมูลจำลองเพื่อการศึกษา</footer>
 
   <script src="js/rng.js"></script>
   <script src="js/data.js"></script>

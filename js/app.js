@@ -1,5 +1,5 @@
 // ============================================================
-// app.js — เชื่อมทุกส่วนเข้ากับ UI
+// app.js — เชื่อมทุกส่วนเข้ากับ UI + StagePass Shield Live Lab
 // ============================================================
 (function (CT) {
   const { data, db: DBM, ml, unsup } = CT;
@@ -7,7 +7,7 @@
   const $ = (id) => document.getElementById(id);
   const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? "-" : Number(v).toLocaleString("th-TH", { maximumFractionDigits: d, minimumFractionDigits: d }));
   const pct = (v, d = 1) => fmt(v * 100, d) + "%";
-  const PALETTE = ["#7c5cff", "#22d3ee", "#f97316", "#10b981", "#f43f5e", "#eab308", "#a855f7", "#64748b"];
+  const PALETTE = ["#6d28d9", "#0284c7", "#f97316", "#16a34a", "#e11d48", "#eab308", "#a855f7", "#64748b"];
   const MODEL_NAMES = { rf: "Random Forest", dt: "Decision Tree", lr: "Logistic Regression", rule: "กฎ req/s > 10" };
   const ANOM_NAMES = {
     iforest: "Isolation Forest (Ensemble)",
@@ -17,9 +17,14 @@
     stat: "Statistical Z-Score / IQR",
   };
 
-  Chart.defaults.color = "#9aa1c7";
-  Chart.defaults.borderColor = "#2c3358";
-  Chart.defaults.font.family = "'IBM Plex Sans Thai', sans-serif";
+  function applyChartTheme() {
+    const isDark = document.body.classList.contains("dark");
+    Chart.defaults.color = isDark ? "#9aa1c7" : "#5b547a";
+    Chart.defaults.borderColor = isDark ? "#2c3358" : "#e2ddf5";
+    Chart.defaults.font.family = "'IBM Plex Sans Thai', sans-serif";
+  }
+  applyChartTheme();
+
   const charts = {};
   function chart(id, cfg) {
     if (!$(id)) return;
@@ -39,6 +44,7 @@
     S.SQL = await DBM.loadSqlJs();
     bindEvents();
     await rebuild();
+    initLab();
   }
 
   async function rebuild() {
@@ -66,21 +72,29 @@
     renderOverview();
     renderSupervised();
     renderSeatMap("seatmap", true);
+    renderSeatMap("lab-seatmap", true, S.labSelected);
     $("sql-input").value = SQL_PRESETS[0].sql;
     runSql();
+    if (S.labReady) updateLabEvaluation();
     setStatus(`พร้อมใช้งาน · ${n} บัญชี`, true);
   }
 
   const tick = () => new Promise((r) => setTimeout(r, 20));
 
+  function switchTab(tabName) {
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === tabName));
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === "tab-" + tabName));
+    if (tabName === "database") renderSeatMap("seatmap", true);
+    if (tabName === "lab") renderSeatMap("lab-seatmap", true, S.labSelected);
+  }
+
   function setupTabs() {
     document.querySelectorAll("#tabs button").forEach((b) =>
-      b.addEventListener("click", () => {
-        document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x === b));
-        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === "tab-" + b.dataset.tab));
-        if (b.dataset.tab === "database") renderSeatMap("seatmap", true);
-      })
+      b.addEventListener("click", () => switchTab(b.dataset.tab))
     );
+    if ($("btn-goto-lab")) {
+      $("btn-goto-lab").addEventListener("click", () => switchTab("lab"));
+    }
   }
 
   // ============================================================
@@ -99,6 +113,496 @@
     $("overview-kpis").innerHTML = kpiHtml(k);
   }
   const kpiHtml = (arr) => arr.map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+
+  // ============================================================
+  // 1. STAGEPASS SHIELD LIVE LAB (Real-Time Telemetry + Bot Simulator)
+  // ============================================================
+  const LAB_BOT_PRESETS = {
+    human: {
+      title: "🙂 คนทั่วไปจองบัตร (Human)",
+      isBot: false,
+      botType: null,
+      features: { clicks_per_min: 16, req_per_sec: 0.6, accounts_per_ip: 1, checkout_time_s: 42, mouse_entropy: 0.78, account_age_days: 540, captcha_fail: 0 },
+      flags: { isTrusted: true, webdriver: false, honeypotField: false, honeypotSeat: false, keyIntervalCv: 0.44, teleportCount: 0 },
+      zone: "A", count: 2,
+      name: "สมชาย ใจดี (แฟนเพลงตัวจริง)",
+    },
+    selenium: {
+      title: "🤖 Bot #1: Selenium / Script Click",
+      isBot: true,
+      botType: "obvious",
+      features: { clicks_per_min: 190, req_per_sec: 14.5, accounts_per_ip: 6, checkout_time_s: 3.2, mouse_entropy: 0.03, account_age_days: 2, captcha_fail: 3 },
+      flags: { isTrusted: false, webdriver: true, honeypotField: false, honeypotSeat: false, keyIntervalCv: 0.01, teleportCount: 5 },
+      zone: "VIP", count: 4,
+      name: "AUTO_BUYER_SELENIUM_01",
+    },
+    burst: {
+      title: "⚡ Bot #2: กดรัวแย่งโซน VIP (High-Speed Scalper)",
+      isBot: true,
+      botType: "obvious",
+      features: { clicks_per_min: 360, req_per_sec: 28.0, accounts_per_ip: 9, checkout_time_s: 1.8, mouse_entropy: 0.08, account_age_days: 1, captcha_fail: 4 },
+      flags: { isTrusted: true, webdriver: false, honeypotField: false, honeypotSeat: false, keyIntervalCv: 0.03, teleportCount: 4 },
+      zone: "VIP", count: 4,
+      name: "VIP_SNIPER_BOT_99",
+    },
+    honeypot: {
+      title: "🍯 Bot #3: Auto-Fill & ติดกับดัก Honeypot",
+      isBot: true,
+      botType: "obvious",
+      features: { clicks_per_min: 240, req_per_sec: 18.0, accounts_per_ip: 5, checkout_time_s: 0.3, mouse_entropy: 0.05, account_age_days: 4, captcha_fail: 2 },
+      flags: { isTrusted: false, webdriver: true, honeypotField: true, honeypotSeat: true, keyIntervalCv: 0.0, teleportCount: 3 },
+      zone: "VIP", count: 2,
+      name: "DOM_SCRAPER_AUTOFILL",
+    },
+    stealth: {
+      title: "🥷 Bot #4: บอทแนบเนียน (Stealth Bot)",
+      isBot: true,
+      botType: "stealth",
+      features: { clicks_per_min: 58, req_per_sec: 4.2, accounts_per_ip: 3, checkout_time_s: 14.0, mouse_entropy: 0.38, account_age_days: 25, captcha_fail: 1 },
+      flags: { isTrusted: true, webdriver: false, honeypotField: false, honeypotSeat: false, keyIntervalCv: 0.05, teleportCount: 1 },
+      zone: "VIP", count: 2,
+      name: "STEALTH_PROXY_AGENT",
+    },
+    zeroday: {
+      title: "🕵️ Bot #5: Zero-Day Bot (บอทสายพันธุ์ใหม่ไร้ Label!)",
+      isBot: true,
+      botType: "zeroday",
+      features: { clicks_per_min: 11, req_per_sec: 0.45, accounts_per_ip: 14, checkout_time_s: 88.0, mouse_entropy: 0.04, account_age_days: 680, captcha_fail: 5 },
+      flags: { isTrusted: true, webdriver: false, honeypotField: false, honeypotSeat: false, keyIntervalCv: 0.07, teleportCount: 2 },
+      zone: "A", count: 4,
+      name: "DISTRIBUTED_ZERODAY_NODE",
+    },
+  };
+
+  function initLab() {
+    S.labSelected = ["VIP-A01", "VIP-A02"];
+    S.labMode = "live"; // 'live' or preset key
+    S.labTelemetry = {
+      startTime: performance.now(),
+      mousePts: [],
+      clicks: [],
+      keys: [],
+      untrustedEvents: 0,
+      teleportCount: 0,
+      honeypotSeatClicked: false,
+    };
+
+    const arena = $("tab-lab");
+    arena.addEventListener("mousemove", (e) => {
+      if (S.labMode !== "live") return;
+      const pts = S.labTelemetry.mousePts;
+      const now = performance.now();
+      if (pts.length) {
+        const prev = pts[pts.length - 1];
+        const dist = Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
+        const dt = Math.max(1, now - prev.t);
+        if (dist > 360 && dt < 18) S.labTelemetry.teleportCount++;
+      }
+      pts.push({ x: e.clientX, y: e.clientY, t: now });
+      if (pts.length > 80) pts.shift();
+      updateLabTelemetryUI();
+    });
+
+    arena.addEventListener("click", (e) => {
+      if (!e.isTrusted) S.labTelemetry.untrustedEvents++;
+      if (S.labMode === "live") {
+        S.labTelemetry.clicks.push(performance.now());
+        if (S.labTelemetry.clicks.length > 40) S.labTelemetry.clicks.shift();
+      }
+    });
+
+    arena.addEventListener("keydown", () => {
+      if (S.labMode !== "live") {
+        S.labMode = "live";
+        $("lab-telemetry-mode").textContent = "โหมด: วัดจากการขยับเมาส์/คีย์บอร์ดจริงของคุณ";
+        document.querySelectorAll("#lab-bot-grid .bot-card").forEach((b) => b.classList.remove("active"));
+      }
+      S.labTelemetry.keys.push(performance.now());
+      if (S.labTelemetry.keys.length > 40) S.labTelemetry.keys.shift();
+      updateLabEvaluation();
+    });
+
+    $("lab-seatmap").addEventListener("click", (e) => {
+      const seat = e.target.dataset.seat;
+      if (!seat) return;
+      if (e.target.classList.contains("SOLD")) return;
+      // If user clicks manually, switch back to live mode
+      if (e.isTrusted && S.labMode !== "live") {
+        S.labMode = "live";
+        $("lab-telemetry-mode").textContent = "โหมด: วัดจากการขยับเมาส์/คีย์บอร์ดจริงของคุณ";
+        document.querySelectorAll("#lab-bot-grid .bot-card").forEach((b) => b.classList.remove("active"));
+      }
+      const idx = S.labSelected.indexOf(seat);
+      if (idx >= 0) S.labSelected.splice(idx, 1);
+      else if (S.labSelected.length < 4) S.labSelected.push(seat);
+      renderSeatMap("lab-seatmap", true, S.labSelected);
+      updateSelectedBadge();
+      updateLabEvaluation();
+    });
+
+    $("lab-honeypot-seat").addEventListener("click", () => {
+      S.labTelemetry.honeypotSeatClicked = true;
+      updateLabEvaluation();
+    });
+
+    $("btn-lab-id").onclick = () => {
+      const u = S.users.find((x) => !x.is_bot) || S.users[0];
+      const randomHuman = S.users.filter((x) => !x.is_bot);
+      const pick = randomHuman[Math.floor(Math.random() * randomHuman.length)] || u;
+      $("lab-thai-id").value = pick.thai_id;
+      updateLabEvaluation();
+    };
+
+    $("lab-ip-accounts").oninput = () => updateLabEvaluation();
+    $("lab-thai-id").oninput = () => updateLabEvaluation();
+
+    $("btn-lab-reset").onclick = () => {
+      S.labMode = "live";
+      S.labTelemetry = {
+        startTime: performance.now(),
+        mousePts: [],
+        clicks: [],
+        keys: [],
+        untrustedEvents: 0,
+        teleportCount: 0,
+        honeypotSeatClicked: false,
+      };
+      $("lab-honeypot").value = "";
+      $("lab-ip-accounts").value = "1";
+      $("lab-name").value = "ผู้ชม ทดสอบระบบ";
+      $("lab-db-msg").textContent = "";
+      $("lab-db-msg").className = "msg";
+      $("lab-telemetry-mode").textContent = "โหมด: วัดจากการขยับเมาส์/คีย์บอร์ดจริงของคุณ";
+      document.querySelectorAll("#lab-bot-grid .bot-card").forEach((b) => b.classList.remove("active"));
+      updateSelectedBadge();
+      updateLabEvaluation();
+    };
+
+    document.querySelectorAll("#lab-bot-grid .bot-card").forEach((btn) => {
+      btn.addEventListener("click", () => runBotScenario(btn.dataset.bot, btn));
+    });
+
+    $("btn-lab-book").onclick = () => executeLabBooking();
+
+    S.labReady = true;
+    updateSelectedBadge();
+    renderSeatMap("lab-seatmap", true, S.labSelected);
+    updateLabEvaluation();
+  }
+
+  function updateSelectedBadge() {
+    const el = $("lab-selected-badge");
+    if (!el) return;
+    if (!S.labSelected || !S.labSelected.length) {
+      el.textContent = "ยังไม่ได้เลือกที่นั่ง";
+      el.className = "pill p-warn";
+    } else {
+      el.textContent = `เลือกแล้ว ${S.labSelected.length}/4 ที่นั่ง: ${S.labSelected.join(", ")}`;
+      el.className = "pill p1";
+    }
+  }
+
+  function computeLiveFeatures() {
+    if (S.labMode !== "live" && LAB_BOT_PRESETS[S.labMode]) {
+      const p = LAB_BOT_PRESETS[S.labMode];
+      return {
+        features: { ...p.features, accounts_per_ip: +$("lab-ip-accounts").value || p.features.accounts_per_ip },
+        flags: { ...p.flags, honeypotField: Boolean($("lab-honeypot").value) || p.flags.honeypotField },
+        presetTitle: p.title,
+        isBotPreset: p.isBot,
+      };
+    }
+
+    const tel = S.labTelemetry;
+    const elapsedS = Math.max(4, (performance.now() - tel.startTime) / 1000);
+    const recentClicks = tel.clicks.filter((t) => performance.now() - t < 60000).length;
+    const clicksPerMin = Math.max(8, Math.round((recentClicks / Math.min(60, elapsedS)) * 60));
+    const reqPerSec = +(Math.max(0.3, recentClicks / elapsedS)).toFixed(2);
+
+    // Compute mouse entropy from angle changes
+    let entropy = 0.76;
+    if (tel.mousePts.length >= 6) {
+      const angles = [];
+      for (let i = 2; i < tel.mousePts.length; i++) {
+        const a1 = Math.atan2(tel.mousePts[i - 1].y - tel.mousePts[i - 2].y, tel.mousePts[i - 1].x - tel.mousePts[i - 2].x);
+        const a2 = Math.atan2(tel.mousePts[i].y - tel.mousePts[i - 1].y, tel.mousePts[i].x - tel.mousePts[i - 1].x);
+        let da = Math.abs(a2 - a1);
+        if (da > Math.PI) da = 2 * Math.PI - da;
+        angles.push(da);
+      }
+      const meanA = angles.reduce((s, v) => s + v, 0) / angles.length;
+      const stdA = Math.sqrt(angles.reduce((s, v) => s + (v - meanA) ** 2, 0) / angles.length);
+      entropy = Math.min(0.95, Math.max(0.15, +(0.45 + stdA * 0.65).toFixed(2)));
+    }
+
+    // Keystroke interval variation
+    let keyCv = 0.38;
+    if (tel.keys.length >= 4) {
+      const diffs = [];
+      for (let i = 1; i < tel.keys.length; i++) diffs.push(tel.keys[i] - tel.keys[i - 1]);
+      const m = diffs.reduce((s, v) => s + v, 0) / diffs.length;
+      const sd = Math.sqrt(diffs.reduce((s, v) => s + (v - m) ** 2, 0) / diffs.length);
+      keyCv = m > 0 ? +(sd / m).toFixed(2) : 0.35;
+    }
+
+    return {
+      features: {
+        clicks_per_min: clicksPerMin,
+        req_per_sec: reqPerSec,
+        accounts_per_ip: +$("lab-ip-accounts").value || 1,
+        checkout_time_s: Math.min(180, Math.max(12, Math.round(elapsedS))),
+        mouse_entropy: entropy,
+        account_age_days: 420,
+        captcha_fail: 0,
+      },
+      flags: {
+        isTrusted: tel.untrustedEvents === 0,
+        webdriver: Boolean(navigator.webdriver),
+        honeypotField: Boolean($("lab-honeypot").value),
+        honeypotSeat: tel.honeypotSeatClicked,
+        keyIntervalCv: keyCv,
+        teleportCount: tel.teleportCount,
+      },
+      presetTitle: "👤 ผู้ใช้งานจริงบนเบราว์เซอร์ (Live Telemetry)",
+      isBotPreset: false,
+    };
+  }
+
+  function updateLabTelemetryUI() {
+    if (!S.labReady) return;
+    const { features, flags } = computeLiveFeatures();
+    $("lab-telemetry-kpis").innerHTML = kpiHtml([
+      ["ความเร็วคลิก", `${fmt(features.clicks_per_min)} /นาที`],
+      ["Request Rate", `${fmt(features.req_per_sec, 1)} req/s`],
+      ["Mouse Entropy", fmt(features.mouse_entropy, 2)],
+      ["เวลาทำรายการ", `${fmt(features.checkout_time_s, 1)} วินาที`],
+      ["บัญชีต่อ IP", `${fmt(features.accounts_per_ip)} บัญชี`],
+      ["Event Trust", flags.isTrusted ? "isTrusted ✔" : "Script ✖"],
+    ]);
+  }
+
+  function evaluateAllLayers() {
+    const { features, flags, presetTitle } = computeLiveFeatures();
+    const xVec = BF.map((f) => features[f.key]);
+
+    // 1. Supervised Model Probability
+    const supProb = S.models[S.cur].predictProba([xVec])[0];
+    const supBlock = supProb >= S.thr;
+
+    // 2. Unsupervised Anomaly Score (Isolation Forest + selected method)
+    const LOGF = new Set(["clicks_per_min", "req_per_sec", "accounts_per_sec", "accounts_per_ip", "checkout_time_s", "account_age_days", "captcha_fail"]);
+    const xr = BF.map((f, j) => (LOGF.has(f.key) ? Math.log1p(Math.max(0, xVec[j])) : xVec[j]));
+    const xs = S.anom.scaler.transform([xr])[0];
+    const ifScore = S.anom.methods.iforest.predictOne(xs);
+    const ifCut = flagsForScores(S.anom.methods.iforest.scores, +$("anom-pct").value / 100).cut;
+    const unsupBlock = ifScore >= ifCut;
+
+    // 3. StagePass 11-Layer Shield checks
+    const idCheck = data.validateThaiId($("lab-thai-id").value.replace(/[\s-]/g, ""));
+    const layers = [
+      {
+        name: "Layer 1 · Browser Fingerprint & WebDriver",
+        status: flags.webdriver ? "fail" : "pass",
+        detail: flags.webdriver ? "ตรวจพบ navigator.webdriver = true (Headless/Automation)" : "เบราว์เซอร์ปกติ (webdriver = false)",
+      },
+      {
+        name: "Layer 2 · DOM Event Trust (event.isTrusted)",
+        status: !flags.isTrusted ? "fail" : "pass",
+        detail: !flags.isTrusted ? "ตรวจพบการคลิกจำลองด้วย element.click() / dispatchEvent" : "คลิกจากฮาร์ดแวร์เมาส์จริง (isTrusted = true)",
+      },
+      {
+        name: "Layer 3 · Mouse Trajectory & Entropy",
+        status: features.mouse_entropy < 0.15 || flags.teleportCount > 2 ? "fail" : features.mouse_entropy < 0.42 ? "warn" : "pass",
+        detail: `Mouse Entropy = ${features.mouse_entropy.toFixed(2)} · วาร์ป ${flags.teleportCount} ครั้ง`,
+      },
+      {
+        name: "Layer 4 · Click Cadence & Burst Rate",
+        status: features.clicks_per_min > 140 || features.req_per_sec > 10 ? "fail" : features.clicks_per_min > 50 ? "warn" : "pass",
+        detail: `${features.clicks_per_min} คลิก/นาที (${features.req_per_sec} req/s)`,
+      },
+      {
+        name: "Layer 5 · Keystroke Dynamics",
+        status: flags.keyIntervalCv < 0.04 ? "fail" : flags.keyIntervalCv < 0.12 ? "warn" : "pass",
+        detail: `ความแปรปรวนจังหวะพิมพ์ CV = ${flags.keyIntervalCv.toFixed(2)}`,
+      },
+      {
+        name: "Layer 6 · Checkout Speed Timing",
+        status: features.checkout_time_s < 4 ? "fail" : features.checkout_time_s < 15 ? "warn" : "pass",
+        detail: `ใช้เวลากรอกและเลือกที่นั่ง ${features.checkout_time_s} วินาที`,
+      },
+      {
+        name: "Layer 7 · Honeypot Hidden Field & Trap Seat (Z99)",
+        status: flags.honeypotField || flags.honeypotSeat ? "fail" : "pass",
+        detail: flags.honeypotField || flags.honeypotSeat ? "ติดกับดักบอท! กรอกช่องลับหรือคลิกที่นั่งล่อ Z99" : "ไม่แตะช่องลับ Honeypot",
+      },
+      {
+        name: "Layer 8 · Distributed IP / Multi-Account Check",
+        status: features.accounts_per_ip >= 8 ? "fail" : features.accounts_per_ip >= 3 ? "warn" : "pass",
+        detail: `พบ ${features.accounts_per_ip} บัญชีใช้งานจาก IP เดียวกัน`,
+      },
+      {
+        name: `Layer 9 · Supervised ML (${MODEL_NAMES[S.cur]})`,
+        status: supBlock ? "fail" : "pass",
+        detail: `P(บอท) = ${(supProb * 100).toFixed(1)}% (เกณฑ์ ${(S.thr * 100).toFixed(0)}%) → ${supBlock ? "🤖 บล็อก (ตรงกับแพตเทิร์นบอทที่มี Label)" : "🙂 ผ่านเกณฑ์ Supervised"}`,
+      },
+      {
+        name: "Layer 10 · Unsupervised Anomaly Detection (Isolation Forest)",
+        status: unsupBlock ? "fail" : "pass",
+        detail: `Anomaly Score = ${ifScore.toFixed(2)} (เกณฑ์ ${ifCut.toFixed(2)}) → ${unsupBlock ? "🚨 ติดธง Anomaly! (จับบอทไร้ Label / Zero-Day ได้)" : "🙂 พฤติกรรมอยู่ในกลุ่มปกติ (Inlier)"}`,
+      },
+      {
+        name: "Layer 11 · Thai ID Modulo-11 & SQLite Quota Trigger",
+        status: !idCheck.ok ? "fail" : "pass",
+        detail: idCheck.ok ? `เลขบัตร 13 หลักถูกต้อง · จำกัดไม่เกิน ${DBM.MAX_TICKETS_PER_ID} ใบ/บัตร` : `เลขบัตรไม่ถูกต้อง (${idCheck.reason})`,
+      },
+    ];
+
+    const shieldFails = layers.filter((l) => l.status === "fail").length;
+    return { features, flags, presetTitle, supProb, supBlock, ifScore, ifCut, unsupBlock, idCheck, layers, shieldFails };
+  }
+
+  function updateLabEvaluation() {
+    if (!S.labReady) return;
+    updateLabTelemetryUI();
+    const ev = evaluateAllLayers();
+
+    // Update 3-pillar summary
+    $("lab-layer-summary").innerHTML = kpiHtml([
+      ["ด่าน 1 · Supervised ML", ev.supBlock ? `🤖 บล็อก (${pct(ev.supProb, 0)})` : `✅ ผ่าน (${pct(ev.supProb, 0)})`],
+      ["ด่าน 2 · Unsupervised Anomaly", ev.unsupBlock ? `🚨 ติดธง (${ev.ifScore.toFixed(2)})` : `✅ ปกติ (${ev.ifScore.toFixed(2)})`],
+      ["ด่าน 3 · บัตร ปชช. & DB", ev.idCheck.ok ? "✅ Checksum ผ่าน" : "❌ เลขบัตรผิด"],
+    ]);
+
+    // Update overall verdict banner
+    const vEl = $("lab-verdict");
+    if (!ev.supBlock && ev.unsupBlock) {
+      vEl.className = "msg big warn";
+      vEl.innerHTML = `🕵️ <b>ตรวจพบบอทสายพันธุ์ใหม่ (Zero-Day Bot)!</b> · โมเดล Supervised ปล่อยผ่านเพราะคลิกช้าเหมือนคน (P=${ev.supProb.toFixed(2)}) แต่ <b>Unsupervised Anomaly Detection (Isolation Forest)</b> จับได้จากความผิดปกติหลายมิติ (Score=${ev.ifScore.toFixed(2)} ≥ ${ev.ifCut.toFixed(2)})!`;
+    } else if (ev.shieldFails > 0) {
+      vEl.className = "msg big bad";
+      vEl.innerHTML = `🚫 <b>ระบบป้องกัน StagePass × TicketFlow ปฏิเสธรายการ!</b> · ตกเกณฑ์ความปลอดภัย ${ev.shieldFails} ด่าน (${ev.presetTitle})`;
+    } else {
+      vEl.className = "msg big ok";
+      vEl.innerHTML = `✅ <b>ผ่านการตรวจสอบครบทั้ง 11 ชั้น!</b> · พฤติกรรมสอดคล้องกับผู้ใช้งานจริง พร้อมจองที่นั่งผ่าน SQLite Atomic Transaction`;
+    }
+
+    // Render 11-layer checklist
+    $("lab-shield-list").innerHTML = ev.layers
+      .map(
+        (l) => `
+      <div class="shield-item ${l.status}">
+        <span class="s-name">${l.status === "pass" ? "✅" : l.status === "warn" ? "⚠️" : "🛑"} ${l.name}</span>
+        <span class="s-detail">${l.detail}</span>
+      </div>`
+      )
+      .join("");
+  }
+
+  async function runBotScenario(botKey, btnEl) {
+    const preset = LAB_BOT_PRESETS[botKey];
+    if (!preset) return;
+    document.querySelectorAll("#lab-bot-grid .bot-card").forEach((b) => b.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+
+    S.labMode = botKey;
+    $("lab-telemetry-mode").textContent = `โหมดจำลอง: ${preset.title}`;
+    $("lab-name").value = preset.name;
+    $("lab-ip-accounts").value = preset.features.accounts_per_ip;
+    $("lab-honeypot").value = preset.flags.honeypotField ? "https://scalper-bot-auto.xyz" : "";
+
+    // Pick appropriate user from DB so bookings reflect human vs bot in seatmap
+    const pool = S.users.filter((u) => (preset.isBot ? u.is_bot === 1 : u.is_bot === 0));
+    const matchUser = pool[Math.floor(Math.random() * pool.length)] || S.users[0];
+    $("lab-thai-id").value = matchUser.thai_id;
+
+    // Animate virtual bot cursor across target seats and booking button
+    const cursor = $("bot-cursor");
+    cursor.textContent = preset.isBot ? "🤖" : "👆";
+    cursor.style.display = "block";
+
+    S.labSelected = [];
+    renderSeatMap("lab-seatmap", true, S.labSelected);
+
+    const targetSeats = S.db.availableSeats(preset.zone || "VIP", preset.count || 2);
+    for (const seatId of targetSeats) {
+      const seatEl = document.querySelector(`#lab-seatmap [data-seat="${seatId}"]`);
+      if (seatEl) {
+        const rect = seatEl.getBoundingClientRect();
+        cursor.style.left = rect.left + rect.width / 2 + "px";
+        cursor.style.top = rect.top + rect.height / 2 + "px";
+        await new Promise((r) => setTimeout(r, preset.isBot && botKey !== "zeroday" ? 80 : 150));
+        if (!seatEl.classList.contains("SOLD")) {
+          S.labSelected.push(seatId);
+          renderSeatMap("lab-seatmap", true, S.labSelected);
+          updateSelectedBadge();
+        }
+      }
+    }
+
+    const bookBtn = $("btn-lab-book");
+    if (bookBtn) {
+      const rect = bookBtn.getBoundingClientRect();
+      cursor.style.left = rect.left + rect.width / 2 + "px";
+      cursor.style.top = rect.top + rect.height / 2 + "px";
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    setTimeout(() => { cursor.style.display = "none"; }, 450);
+
+    updateLabEvaluation();
+    executeLabBooking();
+  }
+
+  function executeLabBooking() {
+    const ev = evaluateAllLayers();
+    const msgEl = $("lab-db-msg");
+
+    if (ev.shieldFails > 0) {
+      msgEl.className = "msg bad";
+      if (!ev.supBlock && ev.unsupBlock) {
+        msgEl.innerHTML = `🛑 <b>บล็อกโดยด่านที่ 2 (Unsupervised Anomaly Detection)!</b> แม้โมเดล Supervised จะคิดว่าเป็นคน (P=${ev.supProb.toFixed(2)}) แต่ Isolation Forest ตรวจพบค่าความผิดปกติสูง (${ev.ifScore.toFixed(2)}) จึงไม่อนุญาตให้ทำ Transaction ลงฐานข้อมูล`;
+      } else {
+        const failedNames = ev.layers.filter((l) => l.status === "fail").map((l) => l.name.split("·")[1]?.trim() || l.name);
+        msgEl.innerHTML = `🛑 <b>คำสั่งซื้อถูกสกัดกั้นก่อนถึงฐานข้อมูล!</b> ไม่ผ่านด่าน: <b>${failedNames.join(", ")}</b>`;
+      }
+      return;
+    }
+
+    if (!S.labSelected.length) {
+      msgEl.className = "msg warn";
+      msgEl.textContent = "⚠️ กรุณาคลิกเลือกที่นั่งว่างในผังอย่างน้อย 1 ที่นั่งก่อนยืนยันการจอง";
+      return;
+    }
+
+    // Find or assign user_id in SQLite
+    const rawId = $("lab-thai-id").value.replace(/[\s-]/g, "");
+    const h = data.hashId(rawId);
+    const existing = S.db.query("SELECT user_id FROM users WHERE id_hash=?", [h])[0];
+    const uid = existing ? existing.user_id : 1;
+
+    const booked = [];
+    let failReason = null;
+    for (const seatId of S.labSelected) {
+      const r = S.db.bookSeat(uid, seatId);
+      if (r.ok) booked.push(seatId);
+      else { failReason = r.reason; break; }
+    }
+
+    S.labSelected = [];
+    renderSeatMap("lab-seatmap", true, S.labSelected);
+    renderSeatMap("seatmap", true);
+    updateSelectedBadge();
+
+    if (booked.length && !failReason) {
+      msgEl.className = "msg ok";
+      msgEl.innerHTML = `🎉 <b>จองตั๋วสำเร็จ (COMMIT)!</b> · บันทึกที่นั่ง <b>${booked.join(", ")}</b> ให้ <code>user_id=${uid}</code> ลงตาราง <code>orders</code> ใน SQLite เรียบร้อย`;
+    } else if (booked.length && failReason) {
+      msgEl.className = "msg warn";
+      msgEl.innerHTML = `⚠️ จองสำเร็จบางส่วน (<b>${booked.join(", ")}</b>) · ที่นั่งถัดไปถูกปฏิเสธโดย SQLite Trigger: <b>${failReason}</b> (จำกัดสูงสุด ${DBM.MAX_TICKETS_PER_ID} ใบ/เลขบัตรประชาชน)`;
+    } else {
+      msgEl.className = "msg bad";
+      msgEl.innerHTML = `✖ <b>SQLite Transaction ปฏิเสธการจอง (ROLLBACK):</b> ${failReason === "LIMIT_EXCEEDED" ? `เลขบัตรประชาชนนี้ซื้อครบโควตา ${DBM.MAX_TICKETS_PER_ID} ใบแล้ว` : "ที่นั่งถูกจองไปแล้ว"}`;
+    }
+  }
 
   // ============================================================
   // 2. Supervised
@@ -165,7 +669,7 @@
   function renderSupervised() {
     const key = S.cur, prob = S.probsTest[key];
     const c = ml.confusion(S.yte, prob, S.thr);
-    const knownTe = S.split.test.map(( idx, j) => (S.users[idx].bot_type && S.users[idx].bot_type !== "zeroday" ? j : -1)).filter((j) => j >= 0);
+    const knownTe = S.split.test.map((idx, j) => (S.users[idx].bot_type && S.users[idx].bot_type !== "zeroday" ? j : -1)).filter((j) => j >= 0);
     const zeroTe = S.split.test.map((idx, j) => (S.users[idx].bot_type === "zeroday" ? j : -1)).filter((j) => j >= 0);
     const recKnown = recallBySubset(knownTe, prob, S.thr);
     const recZero = recallBySubset(zeroTe, prob, S.thr);
@@ -175,7 +679,6 @@
         <div class="h">จริง: คน</div><div class="c good">${c.tn}<small>TN</small></div><div class="c badc">${c.fp}<small>FP · คนจริงถูกปฏิเสธ</small></div>
         <div class="h">จริง: บอท</div><div class="c badc">${c.fn}<small>FN · บอทหลุด (ส่วนใหญ่คือ Zero-Day)</small></div><div class="c good">${c.tp}<small>TP</small></div>
       </div>`;
-    const auc = ml.roc(S.yte, prob).auc;
     const cost = c.fp * +$("cost-fp").value + c.fn * +$("cost-fn").value;
     $("sup-metrics").innerHTML = kpiHtml([
       ["Precision", pct(c.prec)], ["Recall (บอทที่มี Label)", pct(recKnown)], ["Recall (Zero-Day ไร้ Label)", pct(recZero)],
@@ -191,7 +694,7 @@
             const r = ml.roc(S.yte, S.probsTest[k]);
             return { label: `${MODEL_NAMES[k]} (AUC ${r.auc.toFixed(3)})`, data: r.pts, showLine: true, pointRadius: 0, borderWidth: k === key ? 3 : 1.5, borderColor: PALETTE[i] };
           }),
-          { label: "สุ่ม", data: [{ x: 0, y: 0 }, { x: 1, y: 1 }], showLine: true, pointRadius: 0, borderDash: [4, 4], borderColor: "#555" },
+          { label: "สุ่ม", data: [{ x: 0, y: 0 }, { x: 1, y: 1 }], showLine: true, pointRadius: 0, borderDash: [4, 4], borderColor: "#888" },
         ],
       },
       options: { plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } }, scales: { x: { title: { display: true, text: "False Positive Rate" }, min: 0, max: 1 }, y: { title: { display: true, text: "True Positive Rate" }, min: 0, max: 1 } } },
@@ -328,15 +831,16 @@
       },
     };
 
+    const centroidColor = document.body.classList.contains("dark") ? "#ffffff" : "#1e1b4b";
     chart("chart-pca", {
       type: "scatter",
       data: { datasets: [
         ...profiles.map((pr) => ({
           label: `${names[pr.cluster]} (${pr.size})`,
           data: idx.map((_, j) => j).filter((j) => km.labels[j] === pr.cluster).map((j) => ({ x: Z[j][0], y: Z[j][1] })),
-          backgroundColor: PALETTE[pr.cluster % PALETTE.length] + "aa", pointRadius: 3,
+          backgroundColor: PALETTE[pr.cluster % PALETTE.length] + "aa", pointRadius: 3.5,
         })),
-        { label: "centroid", data: Zc.map((z) => ({ x: z[0], y: z[1] })), pointStyle: "crossRot", pointRadius: 10, borderWidth: 3, borderColor: "#fff" },
+        { label: "centroid", data: Zc.map((z) => ({ x: z[0], y: z[1] })), pointStyle: "crossRot", pointRadius: 10, borderWidth: 3, borderColor: centroidColor },
       ] },
       options: { scales: { x: { title: { display: true, text: `PC1 (${pct(pca.explained[0])})` } }, y: { title: { display: true, text: `PC2 (${pct(pca.explained[1])})` } } }, plugins: { legend: { labels: { boxWidth: 10, font: { size: 11 } } } } },
     });
@@ -349,7 +853,7 @@
       "พรีเมียม/VIP": "ขายแพ็กเกจ VIP / Hospitality ราคาสูง และเปิด pre-sale สำหรับสมาชิก",
       "แฟนตัวยง": "Fan-club pre-sale พร้อมยืนยันตัวตนเข้มงวด เพราะกลุ่มนี้ถูกบอทแย่งตั๋วมากที่สุด",
       "ครอบครัว/กลุ่ม": "บัตรแพ็กกลุ่ม 4 ใบ ที่นั่งติดกัน",
-      "นักศึกษา/สายประหยัด": "กันโควตาโซน C หรือให้ส่วนลดนักศึกษา (ทดลองได้ในแท็บ 4)",
+      "นักศึกษา/สายประหยัด": "กันโควตาโซน C หรือให้ส่วนลดนักศึกษา (ทดลองได้ในแท็บ 5)",
       "ผู้ชมทั่วไป": "กลุ่มนี้ซื้อใกล้วันงาน จึงเหมาะกับ last-minute sale และการแจ้งเตือนเมื่อมีที่นั่งคืน",
     };
     $("uns-reco").innerHTML = profiles.map((pr) => `<li><b>${names[pr.cluster]}</b>: ${RECO[names[pr.cluster]] || "วิเคราะห์เพิ่มเติม"}</li>`).join("");
@@ -466,9 +970,9 @@
       data: {
         labels,
         datasets: [
-          { label: "คนจริง", data: hH, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#22c55e" : "#22c55e55")) },
-          { label: "บอทที่มี Label", data: hK, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#ef4444" : "#ef444455")) },
-          { label: "บอท Zero-Day (ไร้ Label)", data: hZ, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#f59e0b" : "#f59e0b55")) },
+          { label: "คนจริง", data: hH, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#16a34a" : "#16a34a55")) },
+          { label: "บอทที่มี Label", data: hK, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#dc2626" : "#dc262655")) },
+          { label: "บอท Zero-Day (ไร้ Label)", data: hZ, backgroundColor: labels.map((_, b) => (b >= cutBin ? "#d97706" : "#d9770655")) },
         ],
       },
       options: {
@@ -495,20 +999,21 @@
       label: j === 0 ? "PCA Loadings (Biplot)" : undefined,
       data: [{ x: 0, y: 0 }, { x: pca.components[0][j] * arrowScale, y: pca.components[1][j] * arrowScale }],
       showLine: true,
-      borderColor: "#eab308",
+      borderColor: "#d97706",
       borderWidth: 2,
       pointRadius: [0, 3],
-      pointBackgroundColor: "#eab308",
+      pointBackgroundColor: "#d97706",
     }));
 
+    const ringColor = document.body.classList.contains("dark") ? "#ffffff" : "#4c1d95";
     chart("chart-beh-pca", {
       type: "scatter",
       data: {
         datasets: [
-          { label: `คนจริง (${ptsHuman.length})`, data: ptsHuman, backgroundColor: "#22c55e88", pointRadius: 3 },
-          { label: `บอทที่มี Label (${ptsKnown.length})`, data: ptsKnown, backgroundColor: "#ef4444cc", pointRadius: 4 },
-          { label: `บอท Zero-Day ไร้ Label (${ptsZero.length})`, data: ptsZero, backgroundColor: "#f59e0bee", pointStyle: "triangle", pointRadius: 6 },
-          { label: `ถูกติดธง Anomaly (${ptsFlag.length})`, data: ptsFlag, backgroundColor: "transparent", borderColor: "#ffffff", borderWidth: 1.5, pointRadius: 6 },
+          { label: `คนจริง (${ptsHuman.length})`, data: ptsHuman, backgroundColor: "#16a34a88", pointRadius: 3 },
+          { label: `บอทที่มี Label (${ptsKnown.length})`, data: ptsKnown, backgroundColor: "#dc2626cc", pointRadius: 4 },
+          { label: `บอท Zero-Day ไร้ Label (${ptsZero.length})`, data: ptsZero, backgroundColor: "#d97706ee", pointStyle: "triangle", pointRadius: 6 },
+          { label: `ถูกติดธง Anomaly (${ptsFlag.length})`, data: ptsFlag, backgroundColor: "transparent", borderColor: ringColor, borderWidth: 1.5, pointRadius: 6 },
           ...loadingDatasets,
         ],
       },
@@ -585,21 +1090,26 @@
   }
 
   // ============================================================
-  // 1. Database UI
+  // 2. Database UI & Seat Map
   // ============================================================
-  function renderSeatMap(containerId, clickable) {
+  function renderSeatMap(containerId, clickable, selectedList = []) {
+    if (!$(containerId)) return;
     const rows = S.db.query(`SELECT s.seat_id, s.zone, s.row_no, s.col_no, s.status, u.is_bot, o.user_id
       FROM seats s LEFT JOIN orders o ON o.seat_id = s.seat_id AND o.status='PAID'
       LEFT JOIN users u ON u.user_id = o.user_id ORDER BY s.row_no, s.col_no`);
     const byZone = {};
     rows.forEach((r) => (byZone[r.zone] ||= []).push(r));
-    let html = `<div class="stage">STAGE</div>`;
+    const selSet = new Set(selectedList || []);
+    let html = `<div class="stage">STAGE · IMPACT ARENA</div>`;
     for (const z of DBM.ZONES) {
       const seats = byZone[z.zone] || [];
       const sold = seats.filter((s) => s.status === "SOLD").length;
-      html += `<div class="zone"><div class="zone-label">โซน ${z.zone} · ${fmt(z.price)} บาท · ขายแล้ว ${sold}/${seats.length}</div>
-        <div class="zone-grid" style="grid-template-columns:repeat(${z.cols},14px)">` +
-        seats.map((s) => `<i class="seat ${s.status} ${s.status === "SOLD" ? (s.is_bot ? "bot" : "human") : ""}" data-seat="${s.seat_id}" title="${s.seat_id}${s.user_id ? " · user " + s.user_id + (s.is_bot ? " (บอท)" : "") : ""}"></i>`).join("") +
+      html += `<div class="zone zone-${z.zone}"><div class="zone-label">โซน ${z.zone} · ${fmt(z.price)} บาท · ขายแล้ว ${sold}/${seats.length}</div>
+        <div class="zone-grid" style="grid-template-columns:repeat(${z.cols},16px)">` +
+        seats.map((s) => {
+          const isSel = s.status === "AVAILABLE" && selSet.has(s.seat_id);
+          return `<i class="seat ${s.status} ${isSel ? "SELECTED" : ""} ${s.status === "SOLD" ? (s.is_bot ? "bot" : "human") : ""}" data-seat="${s.seat_id}" title="${s.seat_id} (${fmt(z.price)}฿)${s.user_id ? " · user " + s.user_id + (s.is_bot ? " (บอท)" : "") : ""}"></i>`;
+        }).join("") +
         `</div></div>`;
     }
     $(containerId).innerHTML = html;
@@ -666,7 +1176,7 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
   }
 
   // ============================================================
-  // 4. Simulation — รวมทุกส่วน
+  // 5. Simulation — รวมทุกส่วน
   // ============================================================
   function simulate({ mode = "hybrid", quota = false }) {
     const rng = new CT.Rng(S.seed + 777);
@@ -793,8 +1303,8 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
     chart("chart-sim-time", {
       type: "line",
       data: { labels: tl.map((p) => p.t), datasets: [
-        { label: "ขายให้คน", data: tl.map((p) => p.human), borderColor: "#22c55e", backgroundColor: "#22c55e33", fill: true, pointRadius: 0 },
-        { label: "ขายให้บอท", data: tl.map((p) => p.bot), borderColor: "#ef4444", backgroundColor: "#ef444433", fill: true, pointRadius: 0 },
+        { label: "ขายให้คน", data: tl.map((p) => p.human), borderColor: "#16a34a", backgroundColor: "#16a34a33", fill: true, pointRadius: 0 },
+        { label: "ขายให้บอท", data: tl.map((p) => p.bot), borderColor: "#dc2626", backgroundColor: "#dc262633", fill: true, pointRadius: 0 },
       ] },
       options: { scales: { x: { title: { display: true, text: "วินาทีหลังเปิดขาย" }, ticks: { maxTicksLimit: 12 } }, y: { title: { display: true, text: "ที่นั่งสะสม" } } } },
     });
@@ -802,12 +1312,13 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
     chart("chart-sim-who", {
       type: "bar",
       data: { labels: DBM.ZONES.map((z) => "โซน " + z.zone), datasets: [
-        { label: "คน", data: DBM.ZONES.map((z) => zmap[z.zone]?.human || 0), backgroundColor: "#22c55e" },
-        { label: "บอท", data: DBM.ZONES.map((z) => zmap[z.zone]?.bot || 0), backgroundColor: "#ef4444" },
+        { label: "คน", data: DBM.ZONES.map((z) => zmap[z.zone]?.human || 0), backgroundColor: "#16a34a" },
+        { label: "บอท", data: DBM.ZONES.map((z) => zmap[z.zone]?.bot || 0), backgroundColor: "#dc2626" },
       ] },
       options: { scales: { x: { stacked: true }, y: { stacked: true } } },
     });
     renderSeatMap("sim-seatmap", false);
+    renderSeatMap("lab-seatmap", true, S.labSelected);
   }
 
   function renderSimCompare(list) {
@@ -833,6 +1344,18 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
   // ============================================================
   function bindEvents() {
     $("btn-regen").onclick = () => rebuild();
+
+    if ($("btn-theme")) {
+      $("btn-theme").onclick = () => {
+        document.body.classList.toggle("dark");
+        const isDark = document.body.classList.contains("dark");
+        $("btn-theme").textContent = isDark ? "☀️ โหมดสว่าง" : "🌙 โหมดมืด";
+        applyChartTheme();
+        renderSupervised();
+        renderAnomaly();
+        runUnsupervised(false);
+      };
+    }
 
     // ----- DB tab -----
     $("max-ticket").textContent = DBM.MAX_TICKETS_PER_ID;
@@ -870,8 +1393,14 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
       $("book-msg").className = "msg " + (r.ok ? "ok" : "bad");
       $("book-msg").textContent = r.ok ? `✔ user ${uid} จอง ${seat} สำเร็จ (COMMIT)` : "✖ " + (msgs[r.reason] || r.reason);
       renderSeatMap("seatmap", true);
+      renderSeatMap("lab-seatmap", true, S.labSelected);
     });
-    $("btn-reset-sales").onclick = () => { S.db.resetSales(); renderSeatMap("seatmap", true); $("book-msg").textContent = ""; };
+    $("btn-reset-sales").onclick = () => {
+      S.db.resetSales();
+      renderSeatMap("seatmap", true);
+      renderSeatMap("lab-seatmap", true, S.labSelected);
+      $("book-msg").textContent = "";
+    };
 
     $("sql-presets").innerHTML = SQL_PRESETS.map((p, i) => `<button class="btn ghost small" data-i="${i}">${p.name}</button>`).join("");
     $("sql-presets").addEventListener("click", (e) => {
@@ -888,9 +1417,9 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
     };
 
     // ----- Supervised tab -----
-    const onModelChange = () => { savePredictions(); renderSupervised(); runUnsupervised(true); renderAnomaly(); };
+    const onModelChange = () => { savePredictions(); renderSupervised(); runUnsupervised(true); renderAnomaly(); if (S.labReady) updateLabEvaluation(); };
     $("sup-model").onchange = (e) => { S.cur = e.target.value; onModelChange(); };
-    $("sup-thr").oninput = (e) => { S.thr = +e.target.value; $("sup-thr-val").textContent = S.thr.toFixed(2); renderSupervised(); };
+    $("sup-thr").oninput = (e) => { S.thr = +e.target.value; $("sup-thr-val").textContent = S.thr.toFixed(2); renderSupervised(); if (S.labReady) updateLabEvaluation(); };
     $("sup-thr").onchange = onModelChange;
     $("cost-fp").oninput = $("cost-fn").oninput = renderSupervised;
     $("btn-best-thr").onclick = () => {
@@ -900,8 +1429,8 @@ LIMIT ${DBM.MAX_TICKETS_PER_ID + 1};` },
     // ----- Unsupervised tab -----
     $("uns-k").oninput = (e) => { $("uns-k-val").textContent = e.target.value; runUnsupervised(false); };
     $("uns-only-human").onchange = () => runUnsupervised(true);
-    if ($("anom-method")) $("anom-method").onchange = () => renderAnomaly();
-    $("anom-pct").oninput = (e) => { $("anom-pct-val").textContent = e.target.value; renderAnomaly(); tryPredict(); };
+    if ($("anom-method")) $("anom-method").onchange = () => { renderAnomaly(); if (S.labReady) updateLabEvaluation(); };
+    $("anom-pct").oninput = (e) => { $("anom-pct-val").textContent = e.target.value; renderAnomaly(); tryPredict(); if (S.labReady) updateLabEvaluation(); };
 
     // ----- Simulation tab -----
     const MODE_LABELS = {
