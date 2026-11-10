@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TicketFlow TH — ระบบจองตั๋วคอนเสิร์ตอัจฉริยะ | Digital Chem Eng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🎫</span>
+      <div>
+        <h1>TicketFlow TH</h1>
+        <p>ระบบจองตั๋วคอนเสิร์ตจำลอง · Database + Supervised + Unsupervised Learning</p>
+      </div>
+    </div>
+    <div class="status" id="status">กำลังโหลด…</div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="overview" class="active">0 · ภาพรวม</button>
+    <button data-tab="database">1 · Database</button>
+    <button data-tab="supervised">2 · Supervised (คน vs บอทที่มี Label)</button>
+    <button data-tab="unsupervised">3 · Unsupervised (Anomaly หาบอทไร้ Label + Clustering)</button>
+    <button data-tab="simulation">4 · จำลองวันเปิดขาย</button>
+  </nav>
+
+  <main>
+    <!-- ================= 0. OVERVIEW ================= -->
+    <section id="tab-overview" class="tab active">
+      <div class="grid2">
+        <div class="card">
+          <h2>โจทย์</h2>
+          <p>ตั๋วคอนเสิร์ตขายหมดในไม่กี่นาที เพราะ <b>บอทกว้านซื้อ</b> และ <b>ระบบจองที่นั่งซ้ำ</b> โปรเจกต์นี้มองระบบจองตั๋วเป็น "กระบวนการ" แล้วใช้เครื่องมือจากวิชามาแก้ปัญหาแต่ละจุด</p>
+          <table class="tbl">
+            <thead><tr><th>ส่วนของระบบ</th><th>หัวข้อวิชา</th><th>ครึ่ง</th></tr></thead>
+            <tbody>
+              <tr><td>ตรวจเลขบัตร, ล็อกที่นั่ง (Transaction), จำกัดสิทธิ์ต่อบัตร</td><td>Database Management</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
+              <tr><td>คัดกรองบอทที่รู้จักจาก Label (Classification + Tree)</td><td>Supervised Learning</td><td><span class="pill p1">ครึ่งแรก</span></td></tr>
+              <tr><td><b>ตรวจจับบอทสายพันธุ์ใหม่ / ไร้ Label (Anomaly + PCA Biplot)</b></td><td><b>Unsupervised Learning</b></td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
+              <tr><td>จัดกลุ่มพฤติกรรม &amp; กลุ่มลูกค้า (K-Means, DBSCAN, PCA)</td><td>Unsupervised Learning</td><td><span class="pill p2">ครึ่งหลัง</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>สถิติชุดข้อมูลจำลอง</h2>
+          <div class="kpis" id="overview-kpis"></div>
+          <div class="row gap">
+            <label>จำนวนบัญชี <input type="number" id="cfg-n" value="800" min="200" max="3000" step="100" /></label>
+            <label>สัดส่วนบอท <input type="number" id="cfg-bot" value="0.2" min="0.05" max="0.6" step="0.05" /></label>
+            <label>seed <input type="number" id="cfg-seed" value="42" /></label>
+            <button id="btn-regen" class="btn">สร้างข้อมูลใหม่</button>
+          </div>
+          <p class="muted small">ข้อมูลทั้งหมดเป็นข้อมูลจำลอง เลขบัตรประชาชนสร้างตามสูตร checksum เท่านั้น ไม่ใช่ข้อมูลจริง</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>สถาปัตยกรรม / Pipeline</h2>
+        <div class="flow">
+          <div class="node">👥 ผู้ใช้เข้ามา<br><small>(Feed)</small></div><div class="arrow">→</div>
+          <div class="node sup">🤖 ด่าน 1: บอทที่เคยรู้จัก<br><small>Supervised (มี Label)</small></div><div class="arrow">→</div>
+          <div class="node uns">🔎 ด่าน 2: บอทไร้ Label / Zero-Day<br><small>Unsupervised Anomaly + PCA</small></div><div class="arrow">→</div>
+          <div class="node db">🪪 ตรวจเลขบัตร + ล็อกที่นั่ง<br><small>Database Transaction</small></div><div class="arrow">→</div>
+          <div class="node">✅ ตั๋วที่ขาย<br><small>(Product)</small></div>
+        </div>
+        <div class="flow">
+          <div class="node db">🗄️ Orders / Data historian</div><div class="arrow">→</div>
+          <div class="node uns">🧩 K-Means + PCA แบ่งกลุ่มลูกค้า<br><small>Unsupervised Clustering</small></div><div class="arrow">→</div>
+          <div class="node">📈 กันโควตาโซน / กลยุทธ์ราคา</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 1. DATABASE ================= -->
+    <section id="tab-database" class="tab">
+      <div class="grid2">
+        <div class="card">
+          <h2>🪪 ตรวจเลขบัตรประชาชน (checksum)</h2>
+          <div class="row gap">
+            <input id="id-input" class="mono" placeholder="เลข 13 หลัก" maxlength="17" value="1234567890121" />
+            <button id="btn-id-check" class="btn">ตรวจ</button>
+            <button id="btn-id-random" class="btn ghost">สุ่มเลขที่ถูกต้อง</button>
+          </div>
+          <pre id="id-result" class="console small"></pre>
+        </div>
+        <div class="card">
+          <h2>⚔️ สาธิต Race condition: 2 คนกดที่นั่งเดียวกัน</h2>
+          <div class="row gap">
+            <button id="btn-race-naive" class="btn danger">แบบไม่ป้องกัน (SELECT แล้ว UPDATE)</button>
+            <button id="btn-race-safe" class="btn">แบบ Atomic Transaction</button>
+          </div>
+          <pre id="race-log" class="console small"></pre>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>💺 ทดลองจองที่นั่ง (ผ่าน transaction + trigger จำกัด <span id="max-ticket"></span> ใบ/บัตร)</h2>
+          <div class="row gap">
+            <label>user_id <input type="number" id="book-user" value="1" min="1" /></label>
+            <span class="muted small">คลิกที่นั่งว่างในผังเพื่อจอง</span>
+            <button id="btn-reset-sales" class="btn ghost">ล้างการขายทั้งหมด</button>
+          </div>
+          <div id="book-msg" class="msg"></div>
+          <div class="legend">
+            <span><i class="seat AVAILABLE"></i> ว่าง</span>
+            <span><i class="seat SOLD human"></i> ขายให้คน</span>
+            <span><i class="seat SOLD bot"></i> ขายให้บอท</span>
+          </div>
+          <div id="seatmap" class="seatmap"></div>
+        </div>
+        <div class="card">
+          <h2>🧾 SQL Console</h2>
+          <div class="row gap wrap" id="sql-presets"></div>
+          <textarea id="sql-input" class="mono" rows="6"></textarea>
+          <div class="row gap">
+            <button id="btn-sql-run" class="btn">Run ▶</button>
+            <button id="btn-sql-schema" class="btn ghost">ดู Schema</button>
+            <button id="btn-sql-download" class="btn ghost">ดาวน์โหลด .sqlite</button>
+          </div>
+          <div id="sql-output" class="sql-output"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. SUPERVISED ================= -->
+    <section id="tab-supervised" class="tab">
+      <div class="card">
+        <div class="row gap wrap">
+          <label>โมเดล
+            <select id="sup-model">
+              <option value="rf">Random Forest</option>
+              <option value="dt">Decision Tree</option>
+              <option value="lr">Logistic Regression</option>
+              <option value="rule">กฎง่าย (req/s &gt; 10)</option>
+            </select>
+          </label>
+          <label>Threshold <input type="range" id="sup-thr" min="0.05" max="0.95" step="0.01" value="0.5" /> <b id="sup-thr-val">0.50</b></label>
+          <label>ต้นทุน: ปฏิเสธคนจริง (FP) <input type="number" id="cost-fp" value="5" min="0" style="width:64px" /></label>
+          <label>ต้นทุน: บอทหลุด (FN) <input type="number" id="cost-fn" value="3" min="0" style="width:64px" /></label>
+          <button id="btn-best-thr" class="btn ghost">หา threshold ต้นทุนต่ำสุด</button>
+        </div>
+        <p class="muted small">Train/Test split 70/30 แบบ stratified · ฟีเจอร์: พฤติกรรมการใช้งานระหว่างจอง 7 ตัว · โมเดลทั้งหมดเขียนด้วย JavaScript เอง (ไม่ใช้ไลบรารี ML)</p>
+      </div>
+
+      <div class="grid3">
+        <div class="card"><h3>Confusion Matrix (test set)</h3><div id="cm"></div><div class="kpis small" id="sup-metrics"></div></div>
+        <div class="card"><h3>ROC Curve</h3><canvas id="chart-roc" height="220"></canvas></div>
+        <div class="card"><h3>Feature Importance</h3><canvas id="chart-imp" height="220"></canvas></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>เปรียบเทียบโมเดล (threshold 0.5)</h3>
+          <table class="tbl" id="sup-compare"></table>
+          <h3>ต้นทุนรวม vs Threshold</h3>
+          <canvas id="chart-cost" height="160"></canvas>
+        </div>
+        <div class="card">
+          <h3>🧪 ทดสอบบัญชีเดียว</h3>
+          <div id="try-form" class="try-form"></div>
+          <div id="try-result" class="msg big"></div>
+          <details>
+            <summary>ดูกฎของ Decision Tree (อ่านได้ / อธิบายได้)</summary>
+            <pre id="tree-text" class="console small"></pre>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. UNSUPERVISED ================= -->
+    <section id="tab-unsupervised" class="tab">
+      <div class="card">
+        <h2>🔎 ส่วนที่ 3A · Unsupervised Anomaly Detection: ตรวจจับบอทที่ไม่มี Label (ต่อยอดครึ่งหลัง)</h2>
+        <p class="small">
+          <b>ทำไมต้องใช้ Unsupervised Anomaly Detection?</b> โมเดล Supervised ในแท็บ 2 เรียนรู้จากบอทที่เคยติด Label ไว้แล้ว (เช่น บอทกดรัว) แต่ในงานจริงจะมี <b>บอทสายพันธุ์ใหม่ (Zero-Day / Distributed Bot)</b> ที่ยังไม่มี Label ในชุดฝึก (ตั้งใจกดช้าเหมือนคน แต่ใช้ IP ซ้ำจำนวนมาก + เมาส์ลากเส้นตรงผิดธรรมชาติ) จึงต้องใช้ <b>PCA (ลดมิติ) + Clustering / Anomaly Detection</b> ค้นหาจุดที่เบี่ยงเบนจากกลุ่มคนส่วนใหญ่โดยไม่ต้องพึ่งพา Label
+        </p>
+        <div class="row gap wrap">
+          <label>อัลกอริทึม Anomaly Detection
+            <select id="anom-method">
+              <option value="iforest">Isolation Forest (Ensemble)</option>
+              <option value="lof">Local Outlier Factor — LOF (Proximity/Density)</option>
+              <option value="kmeans">K-Means Distance to Centroid (Clustering)</option>
+              <option value="dbscan">DBSCAN Noise Detection (Density, label = -1)</option>
+              <option value="stat">Statistical Z-Score &amp; Tukey IQR Rule</option>
+            </select>
+          </label>
+          <label>ติดธงบัญชีที่ผิดปกติที่สุด (Contamination)
+            <input type="range" id="anom-pct" min="5" max="40" value="20" /> <b id="anom-pct-val">20</b>%
+          </label>
+          <span class="muted small">ฟีเจอร์พฤติกรรม 7 ตัว → StandardScaler → PCA 2D Biplot + Anomaly Score</span>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="card">
+          <h3>Confusion Matrix (ไม่ใช้ Label ตอนฝึก)</h3>
+          <div id="anom-cm"></div>
+          <div class="kpis small" id="anom-metrics"></div>
+        </div>
+        <div class="card">
+          <h3>การกระจาย Anomaly Score &amp; เกณฑ์ตัดสิน</h3>
+          <canvas id="chart-anom" height="220"></canvas>
+        </div>
+        <div class="card">
+          <h3>PCA Explained Variance (ฟีเจอร์พฤติกรรม)</h3>
+          <canvas id="chart-beh-pcavar" height="220"></canvas>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>PCA 2D Biplot ของพฤติกรรมบัญชี &amp; จุดที่ถูกติดธง Anomaly</h3>
+          <canvas id="chart-beh-pca" height="310"></canvas>
+          <p class="muted small">จุด = บัญชีบนแกน PC1–PC2 · เส้นสีเหลือง = ทิศทางอิทธิพลของฟีเจอร์ (PCA Loadings / Biplot) · วงกลมขอบขาว = บัญชีที่ถูกติดธงว่าเป็น Anomaly</p>
+        </div>
+        <div class="card">
+          <h3>เปรียบเทียบ 5 วิธี Unsupervised Anomaly vs Supervised</h3>
+          <div class="scroll"><table class="tbl" id="anom-compare"></table></div>
+          <p class="muted small" style="margin-top:8px">
+            สังเกตคอลัมน์ <b>Recall (Zero-Day)</b>: โมเดล Supervised แทบจับบอทสายพันธุ์ใหม่ที่ไม่มีใน Label ไม่ได้เลย ในขณะที่ <b>Unsupervised Anomaly Detection</b> จับได้สูงโดยไม่ต้องใช้ Label!
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🧩 ส่วนที่ 3B · Unsupervised Clustering: แบ่งกลุ่มลูกค้าด้วย K-Means + PCA</h2>
+        <div class="row gap wrap">
+          <label>จำนวนกลุ่ม k <input type="range" id="uns-k" min="2" max="8" value="5" /> <b id="uns-k-val">5</b></label>
+          <label><input type="checkbox" id="uns-only-human" checked /> ใช้เฉพาะบัญชีที่ผ่านการคัดกรองว่าเป็น "คน"</label>
+          <span class="muted small">ฟีเจอร์ประวัติการซื้อ 6 ตัว → Standardize → K-Means (k-means++) → PCA 2 มิติ</span>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="card"><h3>Elbow (Inertia)</h3><canvas id="chart-elbow" height="200"></canvas></div>
+        <div class="card"><h3>Silhouette score</h3><canvas id="chart-sil" height="200"></canvas></div>
+        <div class="card"><h3>PCA: Explained variance (กลุ่มลูกค้า)</h3><canvas id="chart-pcavar" height="200"></canvas></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>กลุ่มลูกค้าบนแกน PC1–PC2</h3><canvas id="chart-pca" height="280"></canvas></div>
+        <div class="card">
+          <h3>โปรไฟล์ของแต่ละกลุ่ม (ค่าเฉลี่ย)</h3>
+          <div class="scroll"><table class="tbl" id="uns-profile"></table></div>
+          <h3>ข้อเสนอเชิงธุรกิจ</h3>
+          <ul id="uns-reco"></ul>
+          <p class="muted small" id="uns-purity"></p>
+        </div>
+      </div>
+      <details class="card">
+        <summary>ดูตารางตรวจสอบกับ persona จริงที่ซ่อนไว้ (Crosstab evaluation)</summary>
+        <div class="scroll" style="margin-top:10px"><table class="tbl" id="uns-crosstab"></table></div>
+      </details>
+    </section>
+
+    <!-- ================= 4. SIMULATION ================= -->
+    <section id="tab-simulation" class="tab">
+      <div class="card">
+        <h2>🎤 จำลองวันเปิดขาย: รวม Database + Supervised + Unsupervised Anomaly</h2>
+        <p class="small">ทุกบัญชีเข้ามาตามลำดับเวลา (บอทเร็วกว่าคน) → <b>ระบบคัดกรองบอท (เลือกเทียบได้ 4 โหมด)</b> → บัญชีที่ผ่านเลือกโซนตาม <b>กลุ่มลูกค้า (K-Means)</b> → จองผ่าน <b>Transaction ใน SQLite</b> (กันจองซ้ำ + จำกัดสิทธิ์ต่อบัตร)</p>
+        <div class="row gap wrap">
+          <label>โหมดคัดกรองบอท
+            <select id="sim-mode">
+              <option value="hybrid" selected>Hybrid: Supervised + Unsupervised Anomaly (แนะนำ)</option>
+              <option value="sup">Supervised อย่างเดียว (จับได้เฉพาะบอทที่มีใน Label)</option>
+              <option value="unsup">Unsupervised Anomaly อย่างเดียว (ไม่ใช้ Label)</option>
+              <option value="none">ไม่คัดกรองบอทเลย (No Defense)</option>
+            </select>
+          </label>
+          <label><input type="checkbox" id="sim-quota" /> กันโควตาโซน C 30% ให้กลุ่ม "นักศึกษา/สายประหยัด"</label>
+          <button id="btn-sim-run" class="btn">▶ เริ่มเปิดขาย</button>
+          <button id="btn-sim-compare" class="btn ghost">เปรียบเทียบครบทั้ง 4 โหมด</button>
+        </div>
+      </div>
+      <div class="kpis" id="sim-kpis"></div>
+      <div class="grid2">
+        <div class="card"><h3>ที่นั่งที่ขายได้สะสมตามเวลา</h3><canvas id="chart-sim-time" height="220"></canvas></div>
+        <div class="card"><h3>ที่นั่งแยกตามผู้ซื้อ</h3><canvas id="chart-sim-who" height="220"></canvas></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>ผังที่นั่งหลังเปิดขาย</h3><div id="sim-seatmap" class="seatmap"></div></div>
+        <div class="card"><h3>ผลเปรียบเทียบ</h3><table class="tbl" id="sim-compare"></table><p class="muted small">ผลการจำลองถูกบันทึกลงตาราง <code>orders</code>, <code>predictions</code>, <code>segments</code> — ไปดูต่อได้ที่ SQL Console</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Digital Chemical Engineering · Final Project · ข้อมูลจำลองทั้งหมด</footer>
+
+  <script src="js/rng.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/ml.js"></script>
+  <script src="js/unsup.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "ticketflow-th",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ระบบจองตั๋วคอนเสิร์ตจำลอง (Database + Supervised + Unsupervised Anomaly Detection & Clustering) — Digital Chemical Engineering Final Project",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
