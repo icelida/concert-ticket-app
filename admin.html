@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>หลังบ้าน | TicketFlow TH</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/book.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div id="lock" class="lock card">
+    <div style="font-size:2rem">🔐</div>
+    <h2>หลังบ้านเจ้าของงาน</h2>
+    <input id="pw" type="password" placeholder="รหัสผ่าน" />
+    <button id="login" class="btn block">เข้าสู่ระบบ</button>
+    <div id="lock-msg" class="msg"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <header class="topbar">
+      <div class="brand"><div class="logo-badge">📊</div><div><h1>TicketFlow Back Office</h1><p>ภาพรวมยอดขายและประสิทธิภาพระบบจอง</p></div></div>
+      <div class="top-actions">
+        <select id="f-show"></select>
+        <button id="btn-refresh" class="btn ghost small">🔄 รีเฟรช</button>
+        <button id="btn-seed" class="btn ghost small">🧪 สร้างข้อมูลตัวอย่าง</button>
+        <button id="btn-csv" class="btn ghost small">⬇ CSV</button>
+        <button id="btn-clear" class="btn danger small">ล้างข้อมูล</button>
+        <button id="btn-logout" class="btn small">ออก</button>
+      </div>
+    </header>
+    <main>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid3">
+        <div class="card"><h3>ยอดขายสะสมตามเวลา (฿)</h3><canvas id="c-time" height="200"></canvas></div>
+        <div class="card"><h3>รายได้ตามโซน</h3><canvas id="c-zone" height="200"></canvas></div>
+        <div class="card"><h3>ผลของความพยายามจองทั้งหมด</h3><canvas id="c-out" height="200"></canvas></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Conversion Funnel</h3><div id="funnel"></div>
+          <h3 style="margin-top:16px">การเติมเต็มที่นั่งแต่ละโซน</h3><div id="fill"></div>
+        </div>
+        <div class="card"><h3>เหตุผลที่ระบบป้องกันบอทบล็อก</h3><canvas id="c-reason" height="200"></canvas>
+          <p class="muted small">ระบบป้องกันทำงานเงียบๆ ฝั่งลูกค้า ลูกค้าจะเห็นแค่ข้อความทั่วไป รายละเอียดเห็นที่นี่เท่านั้น</p></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>คำสั่งซื้อล่าสุด</h3><div class="scroll"><table class="tbl" id="t-orders"></table></div></div>
+        <div class="card"><h3>รายการที่ถูกบล็อก / ผิดปกติล่าสุด</h3><div class="scroll"><table class="tbl" id="t-blocked"></table></div></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/store.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

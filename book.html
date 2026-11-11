@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จองบัตรคอนเสิร์ต | TicketFlow TH</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/book.css" />
+</head>
+<body class="cust">
+  <header class="hero">
+    <div style="font-size:2.2rem">🎫</div>
+    <h1>STAGEPASS LIVE 2026</h1>
+    <p>คอนเสิร์ตใหญ่แห่งปี · IMPACT Arena เมืองทองธานี</p>
+    <span class="chip">🔒 ระบบจองปลอดภัย</span><span class="chip">จำกัด 4 ใบ/บัตรประชาชน</span>
+  </header>
+
+  <div class="wrap-narrow">
+    <div id="done" class="card" style="display:none"></div>
+
+    <div id="booking" class="book-grid">
+      <div>
+        <div class="card">
+          <div class="row between wrap gap">
+            <h2 style="margin:0">1. เลือกรอบและที่นั่ง</h2>
+            <select id="show"></select>
+          </div>
+          <div class="legend" style="margin-top:12px">
+            <span><i class="seat AVAILABLE" style="background:linear-gradient(135deg,#f59e0b,#d97706)"></i> VIP 6,500฿</span>
+            <span><i class="seat AVAILABLE"></i> ที่นั่งว่าง</span>
+            <span><i class="seat SELECTED"></i> ที่คุณเลือก</span>
+            <span><i class="seat SOLD"></i> ไม่ว่าง</span>
+          </div>
+          <div id="map" class="seatmap"></div>
+          <p class="muted small" style="margin:8px 0 0">เลือกได้สูงสุด 4 ที่นั่ง · แตะที่นั่งอีกครั้งเพื่อยกเลิก</p>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="card">
+          <h2>2. สรุปและข้อมูลผู้จอง</h2>
+          <div id="lines"></div>
+          <div class="line" style="border:0;margin-top:6px"><span>รวมทั้งหมด</span><span class="total" id="total">0 ฿</span></div>
+          <div class="field"><label>ชื่อ-นามสกุล</label><input id="name" autocomplete="name" placeholder="สมชาย ใจดี" /></div>
+          <div class="field"><label>เบอร์โทรศัพท์</label><input id="phone" inputmode="tel" autocomplete="tel" placeholder="08X-XXX-XXXX" /></div>
+          <div class="field"><label>เลขบัตรประชาชน 13 หลัก</label><input id="tid" class="mono" inputmode="numeric" maxlength="13" placeholder="เลข 13 หลัก" /></div>
+          <div class="hp" aria-hidden="true"><label>Website <input id="hp" name="website" tabindex="-1" autocomplete="off" /></label></div>
+          <button id="go" class="btn block">ยืนยันการจอง</button>
+          <div id="msg" class="msg"></div>
+          <p class="muted small" style="margin:6px 0 0">ข้อมูลนี้เป็นระบบจำลองเพื่อการศึกษา ไม่มีการชำระเงินจริง</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/rng.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/book.js"></script>
+</body>
+</html>
